@@ -1,0 +1,88 @@
+Communication handshake (key exchange):
+    1.) Client connects to server TCP socket
+    2.) Server gives client public key for data transfer
+    3.) Client uses public key to encrypt all further messages
+    4.) The client sends its public key to the server
+    5.) The server will encrypt with the public key from now on
+    6.) The server shows the client a menu of commands
+
+
+
+Menu Commands:
+    1.) Create
+    2.) Delete
+    3.) Read
+    4.) Write
+    5.) Rename
+    6.) user_create
+    7.) group_create
+    8.) group_add
+    9.) group_remove
+
+
+3 root/owner bits, 3 group bits, 3 other bits
+000                 000          000
+
+777
+
+**** SESSION TOKEN PREPENDED TO ALL COMMANDS AND VERIFIED BY SERVER ****
+IF USER IS NOT LOGGED IN, SERVER WILL NOT ALLOW THEM TO RUN ANY COMMANDS EXCEPT LOGIN.
+
+user_create <username> <password>:
+
+
+    1.) User sends server a username and password
+    2.) Server creates a new user object with the password hashed
+    3.) Server tells the user the account has been succesfully created
+
+login <username> <password>:
+    1.) User sends server a username and password
+    2.) Server verifies if password is correct or not with list of username to password hashes
+    3.) Server informs client if succesfully logged in and sends client a session token
+
+group_create <groupname>:
+    1.) User sends server a new group name
+    2.) Server creates a new group object. The user now belongs to this group
+    3.) Server tells the user the group has been added (if the group name is taken, they are informed)
+
+group_add <username> <groupname>:
+    1.) User sends a group add request with a username and a group name
+    2.) If the user belongs to the group, the new user is added
+    3.) The server tells the user if the command succeeded or not
+
+group_remove <username> <groupname>:
+    1.) User sends a group remove request with a username and a group name
+    2.) If the user belongs to the group and the user is in that group, the user is removed from the group
+    3.) The server tells the user if the command succeeded or not
+
+group_list:
+    1.) User sends a group_list request
+    2.) Server responds with the groups that the user belongs to
+
+create <filename / path>:
+    1.) User sends a create file request with a filename.
+    2.) Server checks if the 
+
+delete <filename>:
+
+read <filename>:
+
+write <filename on sfs> "<text>":
+
+rename <filename> <new filename>:
+
+chmod <3 perm numbers (0,1,2,3)> <filename>:
+
+cd <path>:
+
+mkdir <directory name>:
+
+ls:
+
+
+
+
+
+
+
+
