@@ -25,30 +25,6 @@ class SecureFileSystemServer():
         #user authentication
         self.authenticator = Authenticator()
     
-    def __recv_all(self,conn : socket.socket):
-        buffer = bytearray()
-
-        part = conn.recv(4096)
-
-        while part:
-            buffer.extend(part)
-            part = conn.recv(4096)
-
-        return self.conn_crypto.decrypt(buffer)
-    
-    def __recv_all_nodecrypt(self,conn):
-        buffer = bytearray()
-
-        part = conn.recv(4096)
-
-        while part:
-            buffer.extend(part)
-            part = conn.recv(4096)
-
-        return buffer
-
-    def __send_all(self,conn : socket.socket,pub_cipher : PKCS1_v1_5.PKCS115_Cipher,data : str):
-        conn.sendall(pub_cipher.encrypt(str))
 
     def handle_conn(self,conn : socket.socket):
 

@@ -17,8 +17,6 @@ def main():
 
     print("Connected")
 
-    user = "not-logged-in"
-    pwd = ""
 
     #create encrypted communication session. creating this class creates the communication loop
     sess = Session(conn)

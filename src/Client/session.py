@@ -54,7 +54,6 @@ class Session():
         return True
 
 
-
     def handle(self):
 
         #begin message sharing with encryption
