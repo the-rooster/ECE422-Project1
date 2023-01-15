@@ -28,6 +28,8 @@ Menu Commands:
 **** SESSION TOKEN PREPENDED TO ALL COMMANDS AND VERIFIED BY SERVER ****
 IF USER IS NOT LOGGED IN, SERVER WILL NOT ALLOW THEM TO RUN ANY COMMANDS EXCEPT LOGIN.
 
+**** LENGTH OF MESSAGES PREPENDED TO ALL DATA SENT TO SERVER ****
+
 user_create <username> <password>:
 
 
@@ -67,7 +69,9 @@ delete <filename>:
 
 read <filename>:
 
-write <filename on sfs> "<text>":
+write <local filename>:
+    this is what the client types. whats sent to the server is the following:
+        write <filename> |<file contents>
 
 rename <filename> <new filename>:
 

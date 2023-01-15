@@ -11,9 +11,14 @@ def send_all(conn : socket.socket ,data):
 
 def send_all_encrypted(conn : socket.socket ,crypto : CryptoManager,data):
     #encrypt data
-    data = crypto.encrypt(bytes(data,encoding="UTF-8"))
+    to_send = bytearray()
 
-    send_all(conn,data)
+    for i in range(0,len(data),100):
+        chunk = data[i:min(i + 100,len(data))]
+        to_send.extend(b'|CHUNK|')
+        to_send.extend(crypto.encrypt(bytes(chunk,encoding="UTF-8")))
+
+    send_all(conn,to_send)
 
 def recv_all_unencrypted(conn : socket.socket):
 
@@ -35,6 +40,12 @@ def recv_all_unencrypted(conn : socket.socket):
     return buffer
 
 def recv_all_encrypted(conn : socket.socket, crypto : CryptoManager):
-    return crypto.decrypt(recv_all_unencrypted(conn))
+    encrypted = recv_all_unencrypted(conn)
+    unencrypted = bytearray()
+    for chunk in encrypted.split(b'|CHUNK|'):
+        if chunk:
+            unencrypted.extend(crypto.decrypt(chunk))
+
+    return unencrypted
 
 

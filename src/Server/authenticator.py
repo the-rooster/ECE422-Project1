@@ -18,17 +18,17 @@ class Authenticator():
 
         self.write_lock = Lock()
 
+    #must be write locked so that the file can't be corrupted
     def save(self):
-
         with open("users.json","w") as f:
             f.write(json.dumps(self.users))
-
 
     def new_user(self,username : str,password : str):
         #must wrap in lock since every client has a seperate thread, and creating a new user will call this method
         self.write_lock.acquire()
 
         if username in self.users.keys():
+            self.write_lock.release()
             return False
         
         self.users[username] = SHA256.new(password.encode("UTF-8")).hexdigest()
@@ -36,6 +36,7 @@ class Authenticator():
         self.save()
 
         self.write_lock.release()
+        return True
 
     def authenticate_user(self,username : str,password : str):
 

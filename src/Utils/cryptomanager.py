@@ -1,5 +1,5 @@
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_v1_5
+from Crypto.Cipher import PKCS1_OAEP
 import os
 
 class CryptoManager():
@@ -25,14 +25,14 @@ class CryptoManager():
                     
         self.public_key = self.private_key.public_key()
 
-        self.master_cipher = PKCS1_v1_5.new(self.private_key)
+        self.master_cipher = PKCS1_OAEP.new(self.private_key)
 
 
     def encrypt(self,contents : bytes):
         return self.master_cipher.encrypt(contents)
 
     def decrypt(self,contents : bytearray):
-        return self.master_cipher.decrypt(contents,None)
+        return self.master_cipher.decrypt(contents)
 
     def get_public_key(self):
         return self.public_key.export_key("PEM")

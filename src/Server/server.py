@@ -1,5 +1,4 @@
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_v1_5
 import socket
 import base64
 
@@ -10,7 +9,8 @@ sys.path.append('../')
 from Utils.cryptomanager import CryptoManager
 from Utils.messages import *
 from authenticator import Authenticator
-
+from session import UserSession
+from menu import menu
 
 class SecureFileSystemServer():
 
@@ -24,6 +24,90 @@ class SecureFileSystemServer():
 
         #user authentication
         self.authenticator = Authenticator()
+
+    def handle_user_create(self,args : list, session : UserSession):
+        if len(args) != 3:
+            self.send(session, "Length of user_create command must be 3\n")
+            return
+
+        if self.authenticator.new_user(args[1],args[2]):
+            session.set_username(args[1])
+            self.send(session, f"Successfully created user: {args[1]}\n")
+        else:
+            self.send(session, "Failed to create user\n")
+
+    def handle_whoami(self,session : UserSession):
+        self.send(session, session.get_username())
+        
+    def handle_login(self,args : list,session : UserSession):
+        if len(args) != 3:
+            self.send(session, "Length of login command must be 3\n")
+            return
+
+        if self.authenticator.authenticate_user(args[1],args[2]):
+            session.set_username(args[1])
+            self.send(session, f"Succesfully logged in as {args[1]}\n")
+        else:
+            self.send(session, "Failed to login\n")
+
+    def handle_logout(self,session: UserSession):
+        session.set_username("")
+        self.send(session, "Succesfully logged out\n")
+
+    def handle_menu(self, session : UserSession):
+        self.send(session, menu)
+
+    def send(self, session : UserSession, message: str):
+        send_all_encrypted(session.get_conn(), session.get_keys(), message)
+
+    def handle_command(self, message, session : UserSession):
+
+        args = message.split(" ")
+
+        cmd = args[0]
+
+        if cmd == "user_create":
+            self.handle_user_create(args, session)
+        elif cmd == "whoami":
+            self.handle_whoami(session)
+        elif cmd == "login":
+            self.handle_login(args, session)
+        elif session.get_username():
+            if cmd == "logout":
+                self.handle_logout(session)
+            elif cmd == "menu":
+                self.handle_menu(session)
+            elif cmd == "group_create":
+                self.handle_group_create(args, session)
+            elif cmd == "group_add":
+                self.handle_group_add(args, session)
+            elif cmd == "group_remove":
+                self.handle_group_remove(args, session)
+            elif cmd == "group_list":
+                self.handle_group_list(args, session)
+            elif cmd == "create":
+                self.handle_create(args, session)
+            elif cmd == "delete":
+                self.handle_delete(args, session)
+            elif cmd == "read":
+                self.handle_read(args, session)
+            elif cmd == "write":
+                self.handle_write(args, session)
+            elif cmd == "rename":
+                self.handle_rename(args, session)
+            elif cmd == "chmod":
+                self.handle_chmod(args, session)
+            elif cmd == "cd":
+                self.handle_cd(args, session)
+            elif cmd == "mkdir":
+                self.handle_mkdir(args, session)
+            elif cmd == "ls":
+                self.handle_ls(args, session)
+            else:
+                self.send(session, "Invalid command\n")
+        else:
+            self.send(session ,"Invalid command\n")
+    
     
 
     def handle_conn(self,conn : socket.socket):
@@ -46,6 +130,10 @@ class SecureFileSystemServer():
         cipher = CryptoManager(key=public_key_client)
 
         print("BEGINNING ENCRYPTED COMMUNICATION!")
+
+        #user session object for working directory + session token
+        sess = UserSession(conn,cipher)
+
         #begin message sharing with encryption
         while conn:
 
@@ -55,7 +143,12 @@ class SecureFileSystemServer():
             print(data)
             print()
 
-            send_all_encrypted(conn,cipher,data)
+            #validate session token sent with message is legit
+
+            
+            self.handle_command(data,sess)
+
+            #send_all_encrypted(conn,cipher,data)
 
 
 

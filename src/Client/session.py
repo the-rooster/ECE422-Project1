@@ -20,9 +20,6 @@ class Session():
         self.other_pub_key = None
         self.other_cipher = None
 
-        self.user = "no-user"
-        self.pwd = ""
-
 
         if not self.key_exchange():
             print("SERVER SENT BAD PUBLIC KEY")
@@ -54,11 +51,11 @@ class Session():
         #begin message sharing with encryption
         while self.conn:
 
-            inp = input(f"[{self.user}]@[{self.pwd}]> ")
+            inp = input(f"> ")
 
             send_all_encrypted(self.conn,self.other_cipher,inp)
             #poc to check key exchange is working
-            data = recv_all_encrypted(self.conn,self.conn_crypto)
+            data = recv_all_encrypted(self.conn,self.conn_crypto).decode("UTF-8")
             print(data)
             
 
