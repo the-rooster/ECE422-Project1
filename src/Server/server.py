@@ -11,19 +11,22 @@ from Utils.messages import *
 from authenticator import Authenticator
 from session import UserSession
 from menu import menu
+from filemanager import FileManager
 
 class SecureFileSystemServer():
 
     def __init__(self):
         
-        #master key for file encryption
-        self.file_crypto = CryptoManager("master_key.pem")
+
 
         #key for communication
         self.conn_crypto = CryptoManager()
 
         #user authentication
         self.authenticator = Authenticator()
+
+        #encrypted file services
+        self.filemanager = FileManager()
 
     def handle_user_create(self,args : list, session : UserSession):
         if len(args) != 3:
@@ -56,6 +59,21 @@ class SecureFileSystemServer():
 
     def handle_menu(self, session : UserSession):
         self.send(session, menu)
+
+    def handle_pwd(self,session : UserSession):
+        self.send(session,session.get_cwd())
+
+    def handle_cd(self, args, session: UserSession):
+        if len(args) != 1:
+            self.send(session, "Length of login command must be 3\n")
+            return
+
+        if self.filemanager.cd(args[0], session):
+            session.set_username(args[1])
+            self.send(session, "Successful cd\n")
+        else:
+            self.send(session, "Failed cd\n")
+
 
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)
@@ -103,6 +121,8 @@ class SecureFileSystemServer():
                 self.handle_mkdir(args, session)
             elif cmd == "ls":
                 self.handle_ls(args, session)
+            elif cmd == "pwd":
+                self.handle_pwd(session)
             else:
                 self.send(session, "Invalid command\n")
         else:

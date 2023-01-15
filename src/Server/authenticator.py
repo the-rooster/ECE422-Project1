@@ -31,7 +31,10 @@ class Authenticator():
             self.write_lock.release()
             return False
         
-        self.users[username] = SHA256.new(password.encode("UTF-8")).hexdigest()
+        self.users[username] = {
+            "password":SHA256.new(password.encode("UTF-8")).hexdigest()
+            "group":"",
+        }
 
         self.save()
 
@@ -40,4 +43,4 @@ class Authenticator():
 
     def authenticate_user(self,username : str,password : str):
 
-        return self.users[username] == SHA256.new(password.encode("UTF-8")).hexdigest()
+        return self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()

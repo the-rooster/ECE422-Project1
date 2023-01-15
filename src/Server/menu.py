@@ -16,4 +16,5 @@ rename <filename> <new filename>
 chmod <3 perm numbers (0,1,2,3)> <filename>
 cd <path>
 mkdir <directory name>
-ls"""
+ls
+pwd"""
