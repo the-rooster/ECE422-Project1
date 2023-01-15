@@ -40,12 +40,7 @@ class Session():
         print("PUBLIC KEY RECEIVED: ")
         print(public_key)
 
-        self.other_pub_key = RSA.import_key(public_key)
-
-        if not self.other_pub_key.can_encrypt():
-            return False
-
-        self.other_cipher = PKCS1_v1_5.new(self.other_pub_key)
+        self.other_cipher = CryptoManager(key=public_key)
 
         print("SENDING PUBLIC KEY")
         send_all(self.conn,self.conn_crypto.get_public_key())

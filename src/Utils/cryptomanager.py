@@ -4,7 +4,7 @@ import os
 
 class CryptoManager():
 
-    def __init__(self,filename : str = None):
+    def __init__(self,filename : str = None,key : str = None):
 
         #if filename is specified (premade key stored in file), or create new key if it can't be found
         if filename:
@@ -16,7 +16,8 @@ class CryptoManager():
                 self.private_key = RSA.generate(2048)
                 with open(filename,"wb") as f:
                     f.write(self.private_key.export_key('PEM'))
-
+        elif key:
+            self.private_key = RSA.import_key(key)
         else:
             #if filename is not specified, just create keys within this object and don't save them
             self.private_key = RSA.generate(4096)
@@ -27,8 +28,8 @@ class CryptoManager():
         self.master_cipher = PKCS1_v1_5.new(self.private_key)
 
 
-    def encrypt(self,contents : str):
-        return self.master_cipher.encrypt(contents.encode("UTF-8"))
+    def encrypt(self,contents : bytes):
+        return self.master_cipher.encrypt(contents)
 
     def decrypt(self,contents : bytearray):
         return self.master_cipher.decrypt(contents,None)

@@ -9,9 +9,9 @@ def send_all(conn : socket.socket ,data):
 
     conn.sendall(data)
 
-def send_all_encrypted(conn : socket.socket ,cipher : PKCS1_v1_5.PKCS115_Cipher,data):
+def send_all_encrypted(conn : socket.socket ,crypto : CryptoManager,data):
     #encrypt data
-    data = cipher.encrypt(bytes(data,encoding="UTF-8"))
+    data = crypto.encrypt(bytes(data,encoding="UTF-8"))
 
     send_all(conn,data)
 

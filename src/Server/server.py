@@ -42,17 +42,8 @@ class SecureFileSystemServer():
 
         print("PUBLIC KEY RECEIVED: ")
         print(public_key_client)
-
         
-        #verify key integrity and make cipher object
-        pub_key = RSA.import_key(public_key_client)
-
-        if not pub_key.can_encrypt():
-            conn.sendall("Public Key Invalid\n")
-            conn.close()
-            return
-        
-        cipher = PKCS1_v1_5.new(RSA.import_key(public_key_client))
+        cipher = CryptoManager(key=public_key_client)
 
         print("BEGINNING ENCRYPTED COMMUNICATION!")
         #begin message sharing with encryption
