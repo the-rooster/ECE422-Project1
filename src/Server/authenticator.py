@@ -2,6 +2,8 @@ import os
 import json
 from Crypto.Hash import SHA256
 from threading import Lock
+import copy
+
 """
 This class manages all user authentication. holds usernames and hashed passwords.
 Saves all data to users.json.
@@ -32,7 +34,7 @@ class Authenticator():
             return False
         
         self.users[username] = {
-            "password":SHA256.new(password.encode("UTF-8")).hexdigest()
+            "password":SHA256.new(password.encode("UTF-8")).hexdigest(),
             "group":"",
         }
 
@@ -42,5 +44,13 @@ class Authenticator():
         return True
 
     def authenticate_user(self,username : str,password : str):
+        self.write_lock.acquire()
+        valid = self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()
+        self.write_lock.release()
+        return valid
 
-        return self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()
+    def get_user(self,username : str):
+        self.write_lock.acquire()
+        ret = copy.copy(self.users[username])
+        self.write_lock.release()
+        return ret

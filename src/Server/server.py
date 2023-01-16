@@ -26,7 +26,7 @@ class SecureFileSystemServer():
         self.authenticator = Authenticator()
 
         #encrypted file services
-        self.filemanager = FileManager()
+        self.filemanager = FileManager(self.authenticator.get_user)
 
     def handle_user_create(self,args : list, session : UserSession):
         if len(args) != 3:
@@ -35,6 +35,10 @@ class SecureFileSystemServer():
 
         if self.authenticator.new_user(args[1],args[2]):
             session.set_username(args[1])
+            #create new user directory in file system
+            self.filemanager.new_user_dir(args[1])
+            #set working directory to new home
+            session.set_cwd(args[1] + "/")
             self.send(session, f"Successfully created user: {args[1]}\n")
         else:
             self.send(session, "Failed to create user\n")
@@ -64,15 +68,20 @@ class SecureFileSystemServer():
         self.send(session,session.get_cwd())
 
     def handle_cd(self, args, session: UserSession):
-        if len(args) != 1:
-            self.send(session, "Length of login command must be 3\n")
+        if len(args) != 2:
+            self.send(session, "Length of cd command must be 2\n")
             return
 
-        if self.filemanager.cd(args[0], session):
-            session.set_username(args[1])
-            self.send(session, "Successful cd\n")
+        try:
+            new_path = self.filemanager.cd(args[1], session)
+        except Exception as e:
+            new_path = False
+        
+        if new_path:
+            session.set_cwd(new_path)
+            self.send(session, f"{session.get_cwd()}\n")
         else:
-            self.send(session, "Failed cd\n")
+            self.send(session, "Invalid path\n")
 
 
     def send(self, session : UserSession, message: str):
@@ -81,6 +90,7 @@ class SecureFileSystemServer():
     def handle_command(self, message, session : UserSession):
 
         args = message.split(" ")
+        args = [str(x) for x in args]
 
         cmd = args[0]
 
