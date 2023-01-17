@@ -11,11 +11,12 @@ from session import UserSession
 files.json:
 
 {
-    "user dir 1": {
+    "user dir 1 <HASHED W/ SHA256>": {
         "permissions": "000",       # 0, 1 or 2 (none, read, read and write),
         "owner": "user 1",
         "type": "directory"/"file",
-        "hash": <file hash>         #if file, hash of filename + contents, if directory hash of dirname
+        "name" : <file name : user dir 1>,
+        "hash": <file hash>         #if file, hash of filename + contents. if directory, leave empty
         "files": {                  # only if directory
             "dir 1": {...}
         }
@@ -32,7 +33,6 @@ class FileManager():
         #master key for file encryption
         self.file_crypto = CryptoManager("master_key.pem")
 
-        self.name_crypto = CryptoManager("dir_name.pem",num_bits=1024)
 
         if os.path.exists("files.json"):
 
@@ -53,7 +53,7 @@ class FileManager():
         
         self.write_lock.acquire()
 
-        dir_name = self.encode_filename(username)
+        dir_name = self.encode_filename(username.encode("UTF-8"))
 
         os.mkdir(self.base_path + dir_name)
         self.files[dir_name] = {
@@ -61,6 +61,7 @@ class FileManager():
             "owner" : username,
             "type" : "directory",
             "hash" : "",
+            "name" : username,
             "files" : {}
         }
 
@@ -68,22 +69,26 @@ class FileManager():
 
         self.write_lock.release()
 
-    def encode_filename(self,filename : str):
-        filename = self.name_crypto.encrypt(filename.encode("UTF-8"))
-        filename = base64.encodebytes(filename).decode("UTF-8")
-        filename = filename.replace("\n","")
-        filename = filename.replace("=","^")
-        filename = filename.replace("+","_")
-        filename = filename.replace("/","-")
-        return filename
+    def encode_filename(self,filename : bytes):
+        b64 = base64.encodebytes(SHA256.new(filename).digest()).decode("UTF-8").strip()
+        b64 = b64.replace("/","-")
+        b64 = b64.replace("+","_")
+        b64 = b64.replace("=","^")
+        return b64
     
-    def decode_filename(self,filename : str):
-        filename = filename.replace("^","=")
-        filename = filename.replace("_","+")
-        filename = filename.replace("-","/")
-        filename = base64.decodebytes(filename)
-        filename = self.name_crypto.decrypt(filename)
-        return filename
+    def decode_filename(self,filepath : str):
+        #must use absolute filepath. no relative filepaths (including ~)
+        parts = filepath.split("/")
+
+        current = self.files[parts[0]]
+
+        for p in parts[1:]:
+            current = current[p]
+        
+        return current["name"]
+
+        
+        
     
     def save(self):
         with open("files.json","w") as f:
@@ -91,17 +96,40 @@ class FileManager():
 
     def cd(self,path,session : UserSession):
         
-        path : str = os.path.normpath(session.get_cwd() + "/" + path)
+        if path[0] == "/":
+            print("ABSOLUTE")
+            path = os.path.normpath(path)
+            path = path.replace("..","")
+            path = os.path.normpath(path)
 
-        #case for when path[0] == ~
-        if path[0] == "~/":
-            path = path.replace("~/",session.get_username() + "/")
+        elif path[0] == "~/":
+            print("HOME")
+            #case for when path[0] == ~, a shortcut to the home directory
+            path = path.replace("~", session.get_username()+ "/")
+        else :
+            #case for when path begins with "." or "" (relative traversal)
+            print("RELATIVE")
+            path : str = os.path.normpath(session.get_cwd() + "/" + path)
+            print("HERE1",path)
+            path = path.replace("..","")
+            path : str = os.path.normpath(path)
+
+
         
-        #encrypt each piece of the path
-        encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path.split("/")])
+        #remove random /'s and /./'s and extract path components
+        path = [p for p in path.split("/") if p and p != "."]
 
-        if not os.path.exists(self.base_path + encrypted_path + "/"):
+        
+        print(path)
+
+        #encrypt each piece of the path
+        encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path]) if path else ""
+        total_path = os.path.normpath(self.base_path + encrypted_path + "/")
+
+        if not os.path.exists(total_path):
             return False
+
+        path = "/".join(path)
             
         return path + "/"
     

@@ -75,6 +75,7 @@ class SecureFileSystemServer():
         try:
             new_path = self.filemanager.cd(args[1], session)
         except Exception as e:
+            print(e)
             new_path = False
         
         if new_path:
