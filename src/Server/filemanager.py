@@ -32,7 +32,7 @@ class FileManager():
 
         #master key for file encryption
         self.file_crypto = CryptoManager("master_key.pem")
-        self.home_path = self.encode_filename("home".encode("UTF-8"))
+        self.home_path = self.encode_filename("home")
 
 
         if os.path.exists("files.json"):
@@ -61,18 +61,12 @@ class FileManager():
         self.get_user_info = get_user_info
 
 
-
-    
-        
-    def new_user_dir(self,username : str):
-
-        
+    def new_user_dir(self, username : str):
         self.write_lock.acquire()
 
-        dir_name = self.encode_filename(username.encode("UTF-8"))
-
-        os.mkdir(self.base_path + "/" + self.home_path + "/" + dir_name)
-        self.files[self.home_path]["files"][dir_name] = {
+        encoded_user_dir = self.encode_filename(username)
+        os.mkdir(self.base_path + "/" + self.home_path + "/" + encoded_user_dir)
+        self.files[self.home_path]["files"][encoded_user_dir] = {
             "permissions" : "200",
             "owner" : username,
             "type" : "directory",
@@ -80,18 +74,20 @@ class FileManager():
             "name" : username,
             "files" : {}
         }
-
         self.save()
 
         self.write_lock.release()
 
-    def encode_filename(self,filename : bytes):
+
+    def encode_filename(self, filename : str):
+        filename = filename.encode("UTF-8")
         b64 = base64.encodebytes(SHA256.new(filename).digest()).decode("UTF-8").strip()
         b64 = b64.replace("/","-")
         b64 = b64.replace("+","_")
         b64 = b64.replace("=","^")
         return b64
     
+
     def decode_filename(self,filepath : str):
         #must use absolute filepath. no relative filepaths (including ~)
         parts = filepath.split("/")
@@ -102,6 +98,7 @@ class FileManager():
             current = current[p]
         
         return current["name"]
+
 
     def has_permission(self,file : dict, session : UserSession):
         #return string 'read', 'write' if user has permission
@@ -146,6 +143,7 @@ class FileManager():
         with open("files.json","w") as f:
             f.write(json.dumps(self.files))
 
+
     def fix_path(self,path,session):
         if not path:
             path = session.get_cwd()
@@ -170,16 +168,13 @@ class FileManager():
 
         return path
     
-    def save(self):
-        with open("files.json","w") as f:
-            f.write(json.dumps(self.files))
 
     def cd(self,path,session : UserSession):
         
         path = self.fix_path(path,session)
 
         #encrypt each piece of the path
-        encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path]) if path else ""
+        encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
         total_path = os.path.normpath(self.base_path + encrypted_path + "/")
 
         print("CD TOTAL PATH: ",total_path)
@@ -190,13 +185,14 @@ class FileManager():
             
         return path + "/"
 
+
     def ls(self,path,session):
 
         result = "Directory Listing:\n"
 
         path = self.fix_path(path,session)
         print("BEFORE ENCRYPT:",path)
-        path = [self.encode_filename(x.encode("UTF-8")) for x in path]
+        path = [self.encode_filename(x) for x in path]
         file_obj = {}
         if path:
             print("PATH:",path)
@@ -229,43 +225,22 @@ class FileManager():
                     result += k + f" | {type}\n"
         return result            
     
+    
     def mkdir(self, name, session : UserSession):
-        
         self.write_lock.acquire()
 
         path = self.fix_path(f"./{name}",session)
-        encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path]) if path else ""
+        encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
         total_path = os.path.normpath(self.base_path + encrypted_path + "/")
 
-
-        if not path:
-            print("can't create directory in root")
+        if not path or len(path) < 2 or path[0] != 'home' or path[1] != session.get_username():
             self.write_lock.release()
             return False
-        
-
-
-        if len(path) < 2 or path[0] != 'home' or path[1] != session.get_username():
-            self.write_lock.release()
-            return False
-
-
-        print ("PATHS:")
-        print (encrypted_path)
-        print (total_path)
-        print (path)
-
-        if len(path) < 2:
-            print("can not create here")
-            self.write_lock.release()
-            return False
-
 
         file_obj = self.files[self.home_path]
 
         for dir in path[1:]:
-
-            encrypted_dir = self.encode_filename(dir.encode("UTF-8"))
+            encrypted_dir = self.encode_filename(dir)
             if encrypted_dir not in file_obj["files"]:
                 print("HERE5")
                 file_obj["files"][encrypted_dir] = {
@@ -292,14 +267,8 @@ class FileManager():
         if not os.path.exists(total_path):
             print("total path: ", total_path)
             os.makedirs(total_path)
-        else:
-            print("HERE!")
-            self.write_lock.release()
-            return False
             
-        print("files", self.files)
         self.save()
 
         self.write_lock.release()
-
         return True
