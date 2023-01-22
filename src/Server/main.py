@@ -8,6 +8,8 @@ sfs = SecureFileSystemServer()
 def main():
     #start tcp server. bind to all network interfaces
     server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
     server.bind(("0.0.0.0",8080))
     server.listen()
 

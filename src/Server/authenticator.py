@@ -45,7 +45,10 @@ class Authenticator():
 
     def authenticate_user(self,username : str,password : str):
         self.write_lock.acquire()
-        valid = self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()
+        if username in self.users:
+            valid = self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()
+        else:
+            valid = False
         self.write_lock.release()
         return valid
 

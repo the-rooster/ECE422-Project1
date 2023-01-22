@@ -38,7 +38,7 @@ class SecureFileSystemServer():
             #create new user directory in file system
             self.filemanager.new_user_dir(args[1])
             #set working directory to new home
-            session.set_cwd(args[1] + "/")
+            session.set_cwd("/home/" + args[1] + "/")
             self.send(session, f"Successfully created user: {args[1]}\n")
         else:
             self.send(session, "Failed to create user\n")
@@ -58,10 +58,8 @@ class SecureFileSystemServer():
             self.send(session, "Failed to login\n")
 
     def handle_logout(self,session: UserSession):
-        if session.logout():
-            self.send(session, "Succesfully logged out\n")
-        else:
-            self.send(session,"Failed to log out\n")
+        session.set_username("")
+        self.send(session, "Succesfully logged out\n")
 
     def handle_menu(self, session : UserSession):
         self.send(session, menu)
@@ -85,6 +83,26 @@ class SecureFileSystemServer():
             self.send(session, f"{session.get_cwd()}\n")
         else:
             self.send(session, "Invalid path\n")
+
+    def handle_ls(self, args, session: UserSession):
+        if len(args) != 1 and len(args) != 2:
+            self.send(session, "Length of ls command must be 1 or 2\n")
+            return
+
+        if len(args) == 2:
+            self.send(session,self.filemanager.ls(args[1], session))
+        else:
+            self.send(session,self.filemanager.ls("", session))
+
+    def handle_mkdir(self, args, session: UserSession):
+        if len(args) != 2:
+            self.send(session, "Length of mkdir command must be 2\n")
+            return
+
+        if self.filemanager.mkdir(args[1], session):
+            self.send(session, "Directory creation succesful\n")
+        else:
+            self.send(session, "Directory creation failed\n")
 
 
     def send(self, session : UserSession, message: str):
