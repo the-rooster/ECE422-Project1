@@ -16,9 +16,6 @@ from filemanager import FileManager
 class SecureFileSystemServer():
 
     def __init__(self):
-        
-
-
         #key for communication
         self.conn_crypto = CryptoManager()
 
@@ -27,6 +24,7 @@ class SecureFileSystemServer():
 
         #encrypted file services
         self.filemanager = FileManager(self.authenticator.get_user)
+
 
     def handle_user_create(self,args : list, session : UserSession):
         if len(args) != 3:
@@ -43,9 +41,11 @@ class SecureFileSystemServer():
         else:
             self.send(session, "Failed to create user\n")
 
+
     def handle_whoami(self,session : UserSession):
         self.send(session, session.get_username())
-        
+
+
     def handle_login(self,args : list,session : UserSession):
         if len(args) != 3:
             self.send(session, "Length of login command must be 3\n")
@@ -57,15 +57,19 @@ class SecureFileSystemServer():
         else:
             self.send(session, "Failed to login\n")
 
+
     def handle_logout(self,session: UserSession):
         session.set_username("")
         self.send(session, "Succesfully logged out\n")
 
+
     def handle_menu(self, session : UserSession):
         self.send(session, menu)
 
+
     def handle_pwd(self,session : UserSession):
         self.send(session,session.get_cwd())
+
 
     def handle_cd(self, args, session: UserSession):
         if len(args) != 2:
@@ -84,6 +88,7 @@ class SecureFileSystemServer():
         else:
             self.send(session, "Invalid path\n")
 
+
     def handle_ls(self, args, session: UserSession):
         if len(args) != 1 and len(args) != 2:
             self.send(session, "Length of ls command must be 1 or 2\n")
@@ -94,6 +99,7 @@ class SecureFileSystemServer():
         else:
             self.send(session,self.filemanager.ls("", session))
 
+
     def handle_mkdir(self, args, session: UserSession):
         if len(args) != 2:
             self.send(session, "Length of mkdir command must be 2\n")
@@ -103,6 +109,17 @@ class SecureFileSystemServer():
             self.send(session, "Directory creation succesful\n")
         else:
             self.send(session, "Directory creation failed\n")
+
+
+    def handle_write(self, args, session: UserSession):
+        if len(args) != 4:
+            self.send(session, "Length of write command must be 4\n")
+            return
+
+        if self.filemanager.write(args[1], args[2], args[3], session):
+            self.send(session, "Write succesful\n")
+        else:
+            self.send(session, "Write failed\n")
 
 
     def send(self, session : UserSession, message: str):
