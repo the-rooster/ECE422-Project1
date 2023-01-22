@@ -255,34 +255,39 @@ class FileManager():
         print (total_path)
         print (path)
 
+        if len(path) < 2:
+            print("can not create here")
+            self.write_lock.release()
+            return False
 
-        file_obj = self.files[self.encode_filename(path[0].encode("UTF-8"))]["files"][self.encode_filename(path[1].encode("UTF-8"))]
-        if len([path]) > 2:
-            for dir in path[1:]:
 
-                
-                encrypted_dir = self.encode_filename(dir.encode("UTF-8"))
-                if encrypted_dir not in file_obj["files"]:
-                    file_obj["files"][encrypted_dir] = {
-                        "permissions" : "200",
-                        "owner" : session.get_username(),
-                        "type" : "directory",
-                        "hash" : "",
-                        "name" : dir,
-                        "files" : {}
-                    }
+        file_obj = self.files[self.home_path]
 
-                try:
-                    file_obj = file_obj["files"][encrypted_dir]
-                except KeyError as e:
-                    print("key error", e)
-                    self.write_lock.release()
-                    return False
+        for dir in path[1:]:
 
-                if file_obj["type"] != "directory":
-                    print("found object on mkdir path that isnt a directory")
-                    self.write_lock.release()
-                    return False
+            encrypted_dir = self.encode_filename(dir.encode("UTF-8"))
+            if encrypted_dir not in file_obj["files"]:
+                print("HERE5")
+                file_obj["files"][encrypted_dir] = {
+                    "permissions" : "200",
+                    "owner" : session.get_username(),
+                    "type" : "directory",
+                    "hash" : "",
+                    "name" : dir,
+                    "files" : {}
+                }
+
+            try:
+                file_obj = file_obj["files"][encrypted_dir]
+            except KeyError as e:
+                print("key error", e)
+                self.write_lock.release()
+                return False
+
+            if file_obj["type"] != "directory":
+                print("found object on mkdir path that isnt a directory")
+                self.write_lock.release()
+                return False
 
         if not os.path.exists(total_path):
             print("total path: ", total_path)
@@ -292,6 +297,7 @@ class FileManager():
             self.write_lock.release()
             return False
             
+        print("files", self.files)
         self.save()
 
         self.write_lock.release()
