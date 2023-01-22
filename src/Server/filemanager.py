@@ -158,26 +158,27 @@ class FileManager():
         
         print(path)
 
-        current = self.files[path[0]]
+        if path:
+            current = self.files[path[0]]
 
-        if not self.has_permission(current,session):
-            print("USER DOES NOT HAVE PERMISSION!!!")
-            return False
+            if not self.has_permission(current,session):
+                print("USER DOES NOT HAVE PERMISSION!!!")
+                return False
 
+            
+            #check permissions
+            if len(path) > 1:
+                for x in path[1:]:
+                    
+                    try:
+                        current = current["files"][x]
+                    except Exception as e:
+                        print("ERROR:" + e)
+                        return False
+                    
+                    if current["type"] != "directory":
+                        return False
         
-        
-        if len(path) > 1:
-            for x in path[1:]:
-                if not self.has_permission(current,session):
-                    print("USER DOES NOT HAVE PERMISSION!")
-                    return False
-
-                try:
-                    current = current["files"][x]
-                except Exception as e:
-
-                    print("FAILED CD DUE TO PERMISSIONS: ",e)
-                    return False
 
         #encrypt each piece of the path
         encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path]) if path else ""
