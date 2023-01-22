@@ -29,4 +29,9 @@ class UserSession():
     
     def get_conn(self):
         return self.conn
+
+    def logout(self):
+        self.pwd = "/"
+        self.username = ""
+        return True
     

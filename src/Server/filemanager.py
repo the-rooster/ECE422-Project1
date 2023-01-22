@@ -87,7 +87,43 @@ class FileManager():
         
         return current["name"]
 
+    def has_permission(self,file : dict, session : UserSession):
+        #return string 'read', 'write' if user has permission
+        #otherwise, return None
+
+        perms = file["permissions"]
+        owner = file["owner"]
+        user_group = self.get_user_info(file["owner"])["group"]
         
+        #check owner bits if user is owner
+        if session.get_username() == owner:
+
+            if perms[0] == "2":
+                return 'write'
+            elif perms[0] == "1":
+                return 'read'
+
+            return None
+        
+        #check group bits if user in same group
+
+        if self.get_user_info(session.get_username()) == user_group:
+
+            if perms[1] == "2":
+                return 'write'
+            elif perms[1] == "1":
+                return 'read'
+            
+            return None
+
+        #otherwise, check other bits
+        
+        if perms[2] == "2":
+            return 'write'
+        elif perms[2] == "1":
+            return 'read'
+            
+        return None
         
     
     def save(self):
@@ -121,6 +157,27 @@ class FileManager():
 
         
         print(path)
+
+        current = self.files[path[0]]
+
+        if not self.has_permission(current,session):
+            print("USER DOES NOT HAVE PERMISSION!!!")
+            return False
+
+        
+        
+        if len(path) > 1:
+            for x in path[1:]:
+                if not self.has_permission(current,session):
+                    print("USER DOES NOT HAVE PERMISSION!")
+                    return False
+
+                try:
+                    current = current["files"][x]
+                except Exception as e:
+
+                    print("FAILED CD DUE TO PERMISSIONS: ",e)
+                    return False
 
         #encrypt each piece of the path
         encrypted_path = '/'.join([self.encode_filename(x.encode("UTF-8")) for x in path]) if path else ""

@@ -58,8 +58,10 @@ class SecureFileSystemServer():
             self.send(session, "Failed to login\n")
 
     def handle_logout(self,session: UserSession):
-        session.set_username("")
-        self.send(session, "Succesfully logged out\n")
+        if session.logout():
+            self.send(session, "Succesfully logged out\n")
+        else:
+            self.send(session,"Failed to log out\n")
 
     def handle_menu(self, session : UserSession):
         self.send(session, menu)
