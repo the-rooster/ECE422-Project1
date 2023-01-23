@@ -59,7 +59,7 @@ class SecureFileSystemServer():
 
 
     def handle_logout(self,session: UserSession):
-        session.set_username("")
+        session.logout()
         self.send(session, "Succesfully logged out\n")
 
 
@@ -135,6 +135,7 @@ class SecureFileSystemServer():
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)
 
+
     def handle_command(self, message, session : UserSession):
 
         args = message.split(" ")
@@ -186,7 +187,6 @@ class SecureFileSystemServer():
         else:
             self.send(session ,"Invalid command\n")
     
-    
 
     def handle_conn(self,conn : socket.socket):
 
@@ -227,14 +227,3 @@ class SecureFileSystemServer():
             self.handle_command(data,sess)
 
             #send_all_encrypted(conn,cipher,data)
-
-
-
-
-
-    
-
-        
-
-    
-        
