@@ -347,7 +347,55 @@ class FileManager():
         return True
         
 
+    def read(self, path, session : UserSession):
 
+        #get path to create file in
+        path = self.fix_path(path,session)
+        hashed_path_dirs = '/'.join([self.encode_filename(x) for x in path[:-1]]) if path else ""
+        total_path_dirs = os.path.normpath(self.base_path + hashed_path_dirs + "/")
+
+        #hash all parts of the path
+        hashed_path = [self.encode_filename(x) for x in path]
+        hashed_path_str = '/'.join(hashed_path) if path else ""
+        total_path = os.path.normpath(self.base_path + hashed_path_str)
+        
+
+        if not os.path.isfile(total_path):
+            print("trying to read a directory. cringe.")
+            return "Failed"
+        
+        
+        file_obj = self.files
+
+        for dir in path[:-1]:
+            encrypted_dir = self.encode_filename(dir)
+
+            file_obj = file_obj["files"][encrypted_dir]
+
+            if file_obj["type"] != "directory":
+                print("found object on read path that isnt a directory")
+                return "Failed"
+
+
+        #ensure user has write permissions on this file
+        if not self.has_permission(file_obj,session):
+            #user lacks permissions
+            print("USER LACKS PERMISSIONS")
+            return "Failed"
+
+
+
+        unencrypted = bytearray()
+        with open(total_path,"rb") as f:
+            
+            #encrypt contents and place them in file
+            encrypted = f.read()
+
+            for chunk in encrypted.split(b'|CHUNK|'):
+                if chunk:
+                    unencrypted.extend(self.file_crypto.decrypt(chunk))
+
+        return unencrypted.decode("UTF-8")
         
         
         

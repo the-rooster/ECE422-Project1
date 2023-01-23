@@ -111,7 +111,9 @@ class SecureFileSystemServer():
             self.send(session, "Directory creation failed\n")
 
 
-    def handle_write(self, args, session: UserSession):
+    def handle_write(self, message : str, session: UserSession):
+        args = message.split(" ",3)
+
         if len(args) != 4:
             self.send(session, "Length of write command must be 4\n")
             return
@@ -120,6 +122,14 @@ class SecureFileSystemServer():
             self.send(session, "Write succesful\n")
         else:
             self.send(session, "Write failed\n")
+
+
+    def handle_read(self, args, session: UserSession):
+        if len(args) != 2:
+            self.send(session, "Length of read command must be 2\n")
+            return
+
+        self.send(session, self.filemanager.read(args[1], session))
 
 
     def send(self, session : UserSession, message: str):
@@ -158,7 +168,7 @@ class SecureFileSystemServer():
             elif cmd == "read":
                 self.handle_read(args, session)
             elif cmd == "write":
-                self.handle_write(args, session)
+                self.handle_write(message, session)
             elif cmd == "rename":
                 self.handle_rename(args, session)
             elif cmd == "chmod":
