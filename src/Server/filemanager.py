@@ -307,7 +307,7 @@ class FileManager():
 
         #ensure user has write permissions on this file
 
-        if not self.has_permission(file_obj,session):
+        if not self.has_permission(file_obj,session) == "write":
             #user lacks permissions
             print("USER LACKS PERMISSIONS")
             return False
