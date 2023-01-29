@@ -7,7 +7,8 @@ import base64
 import sys
 sys.path.append('../')
 
-from Utils.cryptomanager import CryptoManager
+from Utils.asymmanager import AsymmetricCryptoManager
+from Utils.symmanager import SymmetricCryptoManager
 from Utils.messages import *
 
 class Session():
@@ -15,7 +16,7 @@ class Session():
 
     def __init__(self,conn : socket.socket):
 
-        self.conn_crypto = CryptoManager("key.pem")
+        self.conn_crypto = AsymmetricCryptoManager("key.pem")
         self.conn = conn
         self.other_pub_key = None
         self.other_cipher = None
@@ -29,18 +30,16 @@ class Session():
 
         
     def key_exchange(self):
+        print("BEGINNING KEY EXCHANGE")
         
-        print("BEGINNING KEY EXCHANGE!")
-        #receive server public key for communication
-        public_key = recv_all_unencrypted(self.conn).decode("UTF-8")
-
-        print("PUBLIC KEY RECEIVED: ")
-        print(public_key)
-
-        self.other_cipher = CryptoManager(key=public_key)
-
         print("SENDING PUBLIC KEY")
         send_all(self.conn,self.conn_crypto.get_public_key())
+
+        symmetric_key = recv_all_unencrypted(self.conn)
+        symmetric_key = self.conn_crypto.decrypt(symmetric_key)
+        print("SYMMETRIC KEY RECEIVED:\n", symmetric_key)
+
+        self.symmetric_cipher = SymmetricCryptoManager(key=symmetric_key)
         
         print("BEGINNING ENCRYPTED COMMUNICATION")
         return True
@@ -52,10 +51,9 @@ class Session():
         while self.conn:
 
             inp = input(f"> ")
-
-            send_all_encrypted(self.conn,self.other_cipher,inp)
+            send_all_encrypted(self.conn,self.symmetric_cipher,inp)
             #poc to check key exchange is working
-            data = recv_all_encrypted(self.conn,self.conn_crypto).decode("UTF-8")
+            data = recv_all_encrypted(self.conn,self.symmetric_cipher).decode("UTF-8")
             print(data)
             
 

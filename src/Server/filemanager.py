@@ -4,7 +4,7 @@ import base64
 from threading import Lock
 from Crypto.Hash import SHA256
 
-from Utils.cryptomanager import CryptoManager
+from Utils.symmanager import SymmetricCryptoManager
 from session import UserSession
 
 """
@@ -31,7 +31,7 @@ class FileManager():
     def __init__(self, get_user_info):
 
         #master key for file encryption
-        self.file_crypto = CryptoManager("master_key.pem")
+        self.file_crypto = SymmetricCryptoManager(filename="")
         self.home_path = self.encode_filename("home")
 
 

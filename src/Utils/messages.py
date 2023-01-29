@@ -1,7 +1,7 @@
 from Crypto.Cipher import PKCS1_v1_5
 import socket
 
-from Utils.cryptomanager import CryptoManager
+from Utils.symmanager import SymmetricCryptoManager
 
 def send_all(conn : socket.socket ,data):
     #prepend length of data to message.
@@ -9,15 +9,9 @@ def send_all(conn : socket.socket ,data):
 
     conn.sendall(data)
 
-def send_all_encrypted(conn : socket.socket ,crypto : CryptoManager,data):
+def send_all_encrypted(conn : socket.socket ,crypto : SymmetricCryptoManager,data : str):
     #encrypt data
-    to_send = bytearray()
-
-    for i in range(0,len(data),100):
-        chunk = data[i:min(i + 100,len(data))]
-        to_send.extend(b'|CHUNK|')
-        to_send.extend(crypto.encrypt(bytes(chunk,encoding="UTF-8")))
-
+    to_send = crypto.encrypt(data.encode("UTF-8"))
     send_all(conn,to_send)
 
 def recv_all_unencrypted(conn : socket.socket):
@@ -39,13 +33,9 @@ def recv_all_unencrypted(conn : socket.socket):
     
     return buffer
 
-def recv_all_encrypted(conn : socket.socket, crypto : CryptoManager):
+def recv_all_encrypted(conn : socket.socket, crypto : SymmetricCryptoManager):
     encrypted = recv_all_unencrypted(conn)
-    unencrypted = bytearray()
-    for chunk in encrypted.split(b'|CHUNK|'):
-        if chunk:
-            unencrypted.extend(crypto.decrypt(chunk))
-
+    unencrypted = crypto.decrypt(encrypted)
     return unencrypted
 
 

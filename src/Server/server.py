@@ -6,7 +6,8 @@ import base64
 import sys
 sys.path.append('../')
 
-from Utils.cryptomanager import CryptoManager
+from Utils.asymmanager import AsymmetricCryptoManager
+from Utils.symmanager import SymmetricCryptoManager
 from Utils.messages import *
 from authenticator import Authenticator
 from session import UserSession
@@ -16,8 +17,7 @@ from filemanager import FileManager
 class SecureFileSystemServer():
 
     def __init__(self):
-        #key for communication
-        self.conn_crypto = CryptoManager()
+
 
         #user authentication
         self.authenticator = Authenticator()
@@ -189,34 +189,28 @@ class SecureFileSystemServer():
     
 
     def handle_conn(self,conn : socket.socket):
+        print("BEGINNING KEY EXCHANGE")
 
-        
-        print("SENDING PUBLIC KEY!: ")
-        print(self.conn_crypto.get_public_key())
-
-        #send public key first
-        send_all(conn,self.conn_crypto.get_public_key())
-
-        print("PUBLIC KEY SENT")
-
-        #receive client public key
         public_key_client = recv_all_unencrypted(conn).decode("UTF-8")
-
-        print("PUBLIC KEY RECEIVED: ")
-        print(public_key_client)
+        print("PUBLIC KEY RECEIVED:\n", public_key_client)
         
-        cipher = CryptoManager(key=public_key_client)
+        rsa_cipher = AsymmetricCryptoManager(key=public_key_client)
+        conn_cipher = SymmetricCryptoManager()
 
-        print("BEGINNING ENCRYPTED COMMUNICATION!")
+        print("SENDING SYMMETRIC KEY:\n", conn_cipher.get_key())
+        send_all(conn,rsa_cipher.encrypt(conn_cipher.get_key()))
+
+        print("BEGINNING ENCRYPTED COMMUNICATION")
+
 
         #user session object for working directory + session token
-        sess = UserSession(conn,cipher)
+        sess = UserSession(conn,conn_cipher)
 
         #begin message sharing with encryption
         while conn:
 
             #poc to check key exchange is working
-            data = recv_all_encrypted(conn,self.conn_crypto).decode("UTF-8")
+            data = recv_all_encrypted(conn,conn_cipher).decode("UTF-8")
             print("CLIENT SENT:\n")
             print(data)
             print()

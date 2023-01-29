@@ -1,12 +1,12 @@
 import socket
 from uuid import uuid4
-from Utils.cryptomanager import CryptoManager
+from Utils.symmanager import SymmetricCryptoManager
 from Utils.messages import *
 
 
 class UserSession():
     
-    def __init__(self,conn : socket.socket, keys : CryptoManager):
+    def __init__(self,conn : socket.socket, keys : SymmetricCryptoManager):
         self.conn = conn
         self.pwd = "/"
         self.username = ""

@@ -2,7 +2,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import os
 
-class CryptoManager():
+class AsymmetricCryptoManager():
 
     def __init__(self,filename : str = None,key : str = None, num_bits : int = 2048):
 
@@ -28,10 +28,10 @@ class CryptoManager():
         self.master_cipher = PKCS1_OAEP.new(self.private_key)
 
 
-    def encrypt(self,contents : bytes):
+    def encrypt(self,contents : bytearray) -> bytes:
         return self.master_cipher.encrypt(contents)
 
-    def decrypt(self,contents : bytearray):
+    def decrypt(self,contents : bytearray) -> bytes:
         return self.master_cipher.decrypt(contents)
 
     def get_public_key(self):
