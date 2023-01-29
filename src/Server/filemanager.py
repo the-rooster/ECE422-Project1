@@ -329,19 +329,11 @@ class FileManager():
         #do all the writing stuff here
         flags = ("w" if overwrite_flag == "o" else "a") + "b"
 
+        encrypted_content = self.encrypt_file_contents(content)
+
         print("OPEN FLAGS: ",flags)
         with open(total_path,flags) as f:
-            
-            #encrypt contents and place them in file
-            encrypted_content = bytearray()
-
-            for i in range(0,len(content),100):
-                chunk = content[i:min(i + 100,len(content))]
-                encrypted_content.extend(b'|CHUNK|')
-                encrypted_content.extend(self.file_crypto.encrypt(bytes(chunk,encoding="UTF-8")))
-
             f.write(encrypted_content)
-
 
         self.save()
         return True
@@ -358,12 +350,10 @@ class FileManager():
         hashed_path = [self.encode_filename(x) for x in path]
         hashed_path_str = '/'.join(hashed_path) if path else ""
         total_path = os.path.normpath(self.base_path + hashed_path_str)
-        
 
         if not os.path.isfile(total_path):
             print("trying to read a directory. cringe.")
             return "Failed"
-        
         
         file_obj = self.files
 
@@ -376,29 +366,81 @@ class FileManager():
                 print("found object on read path that isnt a directory")
                 return "Failed"
 
-
         #ensure user has write permissions on this file
         if not self.has_permission(file_obj,session):
             #user lacks permissions
             print("USER LACKS PERMISSIONS")
             return "Failed"
 
+        encrypted_contents = bytearray()
+        with open(total_path, "rb") as f:
+            encrypted_contents = f.read()
+
+        return self.decrypt_file_contents(encrypted_contents).decode('utf-8')
 
 
-        unencrypted = bytearray()
-        with open(total_path,"rb") as f:
-            
-            #encrypt contents and place them in file
-            encrypted = f.read()
+    def verify_integrity(self, username : str):
+        path = ['home', username] # the unencrypted path in an array
+        encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else "" # the encrypted path in a string
+        total_path = os.path.normpath(self.base_path + encrypted_path + "/") # the encrypted path in a string starting with sfs/
 
-            for chunk in encrypted.split(b'|CHUNK|'):
-                if chunk:
-                    unencrypted.extend(self.file_crypto.decrypt(chunk))
+        file_obj = self.files
+        try:
+            file_obj = file_obj['files'][self.encode_filename(path[0])]['files'][self.encode_filename(path[1])] # file_obj at home/<username>
+        except:
+            return ["Error: user directory not found"]
 
-        return unencrypted.decode("UTF-8")
-        
-        
-        
-        
+        return self.verify_integrity_dfs(file_obj, total_path)
 
+
+    def verify_integrity_dfs(self, file_obj, total_path):
+        messages = []
+
+        for file in file_obj['files']:
+            new_path = total_path + '/' + file
+            new_file_obj = file_obj['files'][file]
+
+            if new_file_obj['type'] == 'directory' and os.path.isdir(new_path):
+                messages.extend(self.verify_integrity_dfs(new_file_obj, new_path))
+            elif new_file_obj['type'] == 'file' and os.path.isfile(new_path):
+                messages.extend(self.verify_integrity_hash(new_file_obj, new_path))
+            else:
+                messages.append(f"Error: path not found {new_path}")
         
+        return messages
+
+
+    def verify_integrity_hash(self, file_obj, path):
+        encrypted_contents = bytearray()
+        with open(path, "rb") as f:
+            encrypted_contents = f.read()
+
+        decrypted_contents = self.decrypt_file_contents(encrypted_contents)
+        constructed_hash = base64.encodebytes(SHA256.new(decrypted_contents).digest()).decode("UTF-8")
+        existing_hash = file_obj['hash']
+
+        if constructed_hash != existing_hash:
+            return [f"Error: hash mismatch {path}"]
+        return []
+
+    
+    def encrypt_file_contents(self, decrypted_contents : str) -> bytearray:
+        encrypted_content = bytearray()
+
+        for i in range(0, len(decrypted_contents), 100):
+            chunk = decrypted_contents[i:min(i + 100, len(decrypted_contents))]
+            encrypted_content.extend(b'|CHUNK|')
+            encrypted_content.extend(self.file_crypto.encrypt(bytes(chunk, encoding="UTF-8")))
+
+        return encrypted_content
+
+    
+    def decrypt_file_contents(self, encrypted_contents : bytes) -> bytearray:
+        decrypted_contents = bytearray()
+
+        for chunk in encrypted_contents.split(b'|CHUNK|'):
+            if chunk:
+                decrypted_contents.extend(self.file_crypto.decrypt(chunk))
+
+        return decrypted_contents
+    

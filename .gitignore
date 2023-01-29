@@ -1,0 +1,8 @@
+src/Client/__pycache__/
+src/Server/__pycache__/
+src/Utils/__pycache__/
+
+src/Server/sfs/
+
+*.json
+*.key

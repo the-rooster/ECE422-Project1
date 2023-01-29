@@ -52,6 +52,7 @@ class SecureFileSystemServer():
             return
 
         if self.authenticator.authenticate_user(args[1],args[2]):
+            print('verify_integrity', self.filemanager.verify_integrity(args[1]))
             session.set_username(args[1])
             self.send(session, f"Succesfully logged in as {args[1]}\n")
         else:
