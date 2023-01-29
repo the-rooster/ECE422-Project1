@@ -31,7 +31,7 @@ class FileManager():
     def __init__(self, get_user_info):
 
         #master key for file encryption
-        self.file_crypto = SymmetricCryptoManager(filename="")
+        self.file_crypto = SymmetricCryptoManager(filename="aes_key.key")
         self.home_path = self.encode_filename("home")
 
 
