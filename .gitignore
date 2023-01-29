@@ -6,3 +6,4 @@ src/Server/sfs/
 
 *.json
 *.key
+*.pem
