@@ -96,9 +96,13 @@ class SecureFileSystemServer():
             return
 
         if len(args) == 2:
-            self.send(session,self.filemanager.ls(args[1], session))
+            res = self.filemanager.ls(args[1], session)
+            self.send(session,res)
         else:
-            self.send(session,self.filemanager.ls("", session))
+            res = self.filemanager.ls("", session)
+            self.send(session,res)
+
+        print(res)
 
 
     def handle_mkdir(self, args, session: UserSession):

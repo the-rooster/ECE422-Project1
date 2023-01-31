@@ -5,13 +5,14 @@ from threading import Lock
 from Crypto.Hash import SHA256
 
 from Utils.symmanager import SymmetricCryptoManager
+from Utils.fernetmanager import FernetCryptoManager
 from session import UserSession
 
 """
 files.json:
 
 {
-    "user dir 1 <HASHED W/ SHA256>": {
+    "user dir 1 <encrypted with fernet": {
         "permissions": "000",       # 0, 1 or 2 (none, read, read and write),
         "owner": "user 1",
         "type": "directory"/"file",
@@ -32,20 +33,27 @@ class FileManager():
 
         #master key for file encryption
         self.file_crypto = SymmetricCryptoManager(filename="aes_key.key")
-        self.home_path = self.encode_filename("home")
+
+        self.filename_crypto = FernetCryptoManager(filename="fern_key.key")
+
+
 
 
         if os.path.exists("files.json"):
             with open("files.json","r") as f:
                 self.files = json.loads(f.read())
+                self.home_path = list(self.files["files"].keys())[0]
         else:
+            print("TEST1")
+            self.home_path = self.encode_filename("home")
+            print("TEST2")
             self.files = { 
+                "type" : "directory",
                 "files": {
                     self.home_path: {
                         "permissions" : "200",
                         "owner" : "admin",
                         "type" : "directory",
-                        "name" : "home",
                         "files" : {}
                     }
                 }
@@ -71,33 +79,17 @@ class FileManager():
             "permissions" : "200",
             "owner" : username,
             "type" : "directory",
-            "name" : username,
             "files" : {}
         }
         self.save()
 
-        
 
-
-    def encode_filename(self, filename : str):
-        filename = filename.encode("UTF-8")
-        b64 = base64.encodebytes(SHA256.new(filename).digest()).decode("UTF-8").strip()
-        b64 = b64.replace("/","-")
-        b64 = b64.replace("+","_")
-        b64 = b64.replace("=","^")
-        return b64
+    def encode_filename(self, filename : str) -> str:
+        return self.filename_crypto.encrypt(filename.encode("UTF-8")).decode("UTF-8")
     
 
-    def decode_filename(self,filepath : str):
-        #must use absolute filepath. no relative filepaths (including ~)
-        parts = filepath.split("/")
-
-        current = self.files[parts[0]]
-
-        for p in parts[1:]:
-            current = current[p]
-        
-        return current["name"]
+    def decode_filename(self,filename : str) -> str:
+        return self.filename_crypto.decrypt(filename.encode("UTF-8")).decode("UTF-8")
 
 
     def has_permission(self,file : dict, session : UserSession):
@@ -162,56 +154,67 @@ class FileManager():
             print("HERE1",path)
             path = path.replace("..","")
             path : str = os.path.normpath(path)
-
-
         
         #remove random /'s and /./'s and extract path components
         path = [p for p in path.split("/") if p and p != "."]
 
         return path
+
+    
+    def dir_exists(self, dir_name, file_obj):
+        if file_obj["type"] != "directory":
+            print("dir_exists: 1")
+            return False
+
+        for dir_name_encrypted in file_obj["files"]:
+            if self.decode_filename(dir_name_encrypted) == dir_name:
+                return dir_name_encrypted
+
+        print("dir_exists: 2")
+        return False
     
 
     def cd(self,path,session : UserSession):
         
         path = self.fix_path(path,session)
 
-        #encrypt each piece of the path
-        hashed_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
-        total_path = os.path.normpath(self.base_path + hashed_path + "/")
+        file_obj = self.files
 
-        print("CD TOTAL PATH: ",total_path)
-        if not os.path.exists(total_path) or os.path.isfile(total_path):
-            return False
+        for dir in path:
+            next_dir = self.dir_exists(dir, file_obj)
 
+            if not next_dir:
+                return False
+            
+            file_obj = file_obj['files'][next_dir]
+
+        
         path = "/".join(path)
             
         return path + "/"
 
 
-    def ls(self,path,session):
+    def ls(self, path, session):
 
         result = ""
 
         path = self.fix_path(path,session)
-        print("BEFORE ENCRYPT:",path)
-        path = [self.encode_filename(x) for x in path]
 
         file_obj = self.files
 
         for dir in path:
-            try:
-                file_obj = file_obj["files"][dir]
-            except KeyError:
-                return False
+            next_dir = self.dir_exists(dir, file_obj)
 
-            if file_obj["type"] != "directory":
-                print("found object on ls path that isnt a directory")
-                return False
+            if not next_dir:
+                return "ls failed"
+            
+            file_obj = file_obj['files'][next_dir]
+
 
         #if they requested a listing of the root directory
         if not file_obj:
             for (k,v) in self.files["files"].items():
-                result += v["name"] + "\n"
+                result += self.decode_filename(k) + "\n"
         else:
             #listing of directory returned. only return filename if user has permission 
             for (k,v) in file_obj["files"].items():
@@ -219,14 +222,35 @@ class FileManager():
                 perms = v["permissions"]
                 owner = v["owner"]
                 if type == "directory" or (type == "file" and self.has_permission(v,session)) :
-                    result += v["name"] + f" | {owner} | {type} | {perms}\n"
+                    result += self.decode_filename(k) + f" | {owner} | {type} | {perms}\n"
                 else:
                     #if user lacks permissions, show encrypted name
                     result += k + f" | {type} | {perms}\n"
-        return result            
+        return result        
     
     
     def mkdir(self, name, session: UserSession):
+
+
+
+        path = self.fix_path(path,session)
+
+        file_obj = self.files
+
+        for dir in path:
+            next_dir = self.dir_exists(dir, file_obj)
+
+            if not next_dir:
+                return False
+            
+            file_obj = file_obj['files'][next_dir]
+
+        
+        path = "/".join(path)
+            
+        return path + "/"
+
+
         
         path = self.fix_path(f"./{name}",session)
         encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
@@ -244,7 +268,6 @@ class FileManager():
                     "permissions" : "200",
                     "owner" : session.get_username(),
                     "type" : "directory",
-                    "name" : dir,
                     "files" : {}
                 }
 
@@ -294,7 +317,6 @@ class FileManager():
                     "permissions" : "200",
                     "owner" : session.get_username(),
                     "type" : "directory",
-                    "name" : dir,
                     "files" : {}
                 }
 
@@ -319,7 +341,6 @@ class FileManager():
                 "owner" : session.get_username(),
                 "type" : "file",
                 "hash" : base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8"),
-                "name" : path[-1],
             }
         
         if not os.path.exists(total_path_dirs):

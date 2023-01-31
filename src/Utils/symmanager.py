@@ -10,7 +10,6 @@ class SymmetricCryptoManager():
         if not filename:
             self.key = key if key else token_bytes(32)
         else:
-
             if os.path.exists(filename):
                 with open(filename,"rb") as f:
                     self.key = f.read()
@@ -18,6 +17,7 @@ class SymmetricCryptoManager():
                 self.key = token_bytes(32)
                 with open(filename,"wb") as f:
                     f.write(self.key)
+        
 
     def encrypt(self,contents : bytearray) -> bytes:
         aes = AES.new(self.key,AES.MODE_EAX)
