@@ -132,6 +132,16 @@ class SecureFileSystemServer():
 
         self.send(session, self.filemanager.read(args[1], session))
 
+    def handle_chmod(self,args,session: UserSession):
+        if len(args) != 3:
+            self.send(session,"Length of chmod command must be 3\n")
+            return
+
+        if self.filemanager.chmod(args[1],args[2],session):
+            self.send(session,"chmod succesful\n")
+        else:
+            self.send(session,"chmod failed\n")
+
 
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)

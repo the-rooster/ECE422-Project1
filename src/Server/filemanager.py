@@ -337,10 +337,8 @@ class FileManager():
 
         self.save()
         return True
-        
 
-    def read(self, path, session : UserSession):
-
+    def __getfile(self,path,session : UserSession):
         #get path to create file in
         path = self.fix_path(path,session)
         hashed_path_dirs = '/'.join([self.encode_filename(x) for x in path[:-1]]) if path else ""
@@ -353,21 +351,25 @@ class FileManager():
 
         if not os.path.isfile(total_path):
             print("trying to read a directory. cringe.")
-            return "Failed"
+            return False, False
         
         file_obj = self.files
 
-        for dir in path[:-1]:
+        for dir in path:
             encrypted_dir = self.encode_filename(dir)
 
             file_obj = file_obj["files"][encrypted_dir]
 
-            if file_obj["type"] != "directory":
-                print("found object on read path that isnt a directory")
-                return "Failed"
+        
+        return total_path, file_obj
+        
+
+    def read(self, path, session : UserSession):
+
+        total_path, file_obj = self.__getfile(path,session)
 
         #ensure user has write permissions on this file
-        if not self.has_permission(file_obj,session):
+        if not self.has_permission(file_obj,session) == "write":
             #user lacks permissions
             print("USER LACKS PERMISSIONS")
             return "Failed"
@@ -378,6 +380,28 @@ class FileManager():
 
         return self.decrypt_file_contents(encrypted_contents).decode('utf-8')
 
+    def chmod(self,perms : str,path : str,session : UserSession):
+
+        total_path, file_obj = self.__getfile(path,session)
+        
+        #assure file exists in files.json
+        if not file_obj:
+            print("path does not exist")
+            return False
+
+        if len(perms) != 3:
+            print("perm string not long enough")
+            return False
+
+        #ensure user has write permissions on this file
+        if not self.has_permission(file_obj,session) == "write":
+            #user lacks permissions
+            print("USER LACKS PERMISSIONS")
+            return False
+        
+        file_obj["permissions"] = perms
+        print(file_obj)
+        return True
 
     def verify_integrity(self, username : str):
         path = ['home', username] # the unencrypted path in an array
