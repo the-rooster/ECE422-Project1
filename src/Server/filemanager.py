@@ -184,14 +184,33 @@ class FileManager():
         return result
 
 
-    def make_os_directories(self, path) -> None:
-        encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
-        total_path = os.path.normpath(self.base_path + encrypted_path + "/")
+    def make_os_directories(self, encrypted_path) -> None:
+        encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
+        total_path = os.path.normpath(self.base_path + encrypted_path_string + "/")
 
         if not os.path.exists(total_path):
             print("total path: ", total_path)
             os.makedirs(total_path)
+
+
+    def write_os_file(self, flags, encrypted_path, encrypted_content) -> None:
+        encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
+        total_path = os.path.normpath(self.base_path + encrypted_path_string)
+
+        with open(total_path, flags) as f:
+            f.write(encrypted_content)
+
     
+    def read_os_file(self, encrypted_path) -> bytes:
+        encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
+        total_path = os.path.normpath(self.base_path + encrypted_path_string)
+
+        encrypted_contents = bytearray()
+        with open(total_path, "rb") as f:
+            encrypted_contents = f.read()
+
+        return encrypted_contents
+
 
     def cd(self, path, session : UserSession):
         path = self.fix_path(path,session)
@@ -227,6 +246,7 @@ class FileManager():
 
     def mkdir(self, name, session: UserSession):
         path = self.fix_path(f"./{name}", session)
+        encrypted_path = []
         file_obj = self.files
 
         for dir_name in path:
@@ -240,22 +260,22 @@ class FileManager():
                     "files" : {}
                 }
 
+            encrypted_path.append(encrypted_filename)
             file_obj = file_obj["files"][encrypted_filename]
             if file_obj["type"] != "directory":
                 return False
 
-        self.make_os_directories(path)
+        self.make_os_directories(encrypted_path)
         self.save()
         return True
 
 
     def write(self, path, overwrite_flag, content : str, session : UserSession):
+        path = self.fix_path(path, session)
+        encrypted_path = []
+        file_obj = self.files
 
-        #get path to create file in
-        path = self.fix_path(path,session)
-        hashed_path_dirs = '/'.join([self.encode_filename(x) for x in path[:-1]]) if path else ""
-        total_path_dirs = os.path.normpath(self.base_path + hashed_path_dirs + "/")
-
+        ###########################################################################################
         #hash all parts of the path
         hashed_path = [self.encode_filename(x) for x in path]
         hashed_path_str = '/'.join(hashed_path) if path else ""
@@ -270,31 +290,25 @@ class FileManager():
         if not os.path.exists(total_path) and ( len(path) < 2 or path[0] != 'home' or path[1] != session.get_username()):
             print("here2")
             return False
-
+        ###########################################################################################
         
-        file_obj = self.files
-
-        for dir in path[:-1]:
-            encrypted_dir = self.encode_filename(dir)
-            if encrypted_dir not in file_obj["files"]:
-                file_obj["files"][encrypted_dir] = {
+        for dir_name in path[:-1]:
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                encrypted_filename = self.encode_filename(dir_name)
+                file_obj["files"][encrypted_filename] = {
                     "permissions" : "200",
                     "owner" : session.get_username(),
                     "type" : "directory",
                     "files" : {}
                 }
 
-            file_obj = file_obj["files"][encrypted_dir]
-
+            encrypted_path.append(encrypted_filename)
+            file_obj = file_obj["files"][encrypted_filename]
             if file_obj["type"] != "directory":
-                print("found object on mkdir path that isnt a directory")
                 return False
 
-
-        #ensure user has write permissions on this file
-
-        if not self.has_permission(file_obj,session) == "write":
-            #user lacks permissions
+        if not self.has_permission(file_obj, session) == "write":
             print("USER LACKS PERMISSIONS")
             return False
 
@@ -306,22 +320,16 @@ class FileManager():
                 "type" : "file",
                 "hash" : base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8"),
             }
-        
-        if not os.path.exists(total_path_dirs):
-            print("total path: ", total_path_dirs)
-            os.makedirs(total_path_dirs)
 
-        #do all the writing stuff here
         flags = ("w" if overwrite_flag == "o" else "a") + "b"
-
         encrypted_content = self.encrypt_file_contents(content)
+        encrypted_write_path = encrypted_path + [encrypted_filename]
 
-        print("OPEN FLAGS: ",flags)
-        with open(total_path,flags) as f:
-            f.write(encrypted_content)
-
+        self.make_os_directories(encrypted_path)
+        self.write_os_file(flags, encrypted_write_path, encrypted_content)
         self.save()
         return True
+
 
     def __getfile(self,path,session : UserSession):
         #get path to create file in
@@ -350,20 +358,29 @@ class FileManager():
         
 
     def read(self, path, session : UserSession):
+        path = self.fix_path(path,session)
+        encrypted_path = []
+        file_obj = self.files
 
-        total_path, file_obj = self.__getfile(path,session)
+        for dir_name in path:
+            if file_obj["type"] != "directory":
+                return "read failed"
+                
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                return "read failed"
 
-        #ensure user has write permissions on this file
-        if not self.has_permission(file_obj,session) == "write":
-            #user lacks permissions
+            encrypted_path.append(encrypted_filename)
+            file_obj = file_obj["files"][encrypted_filename]
+
+        ###########################################################################################
+        if not self.has_permission(file_obj, session) == "write":
             print("USER LACKS PERMISSIONS")
             return "Failed"
 
-        encrypted_contents = bytearray()
-        with open(total_path, "rb") as f:
-            encrypted_contents = f.read()
-
+        encrypted_contents = self.read_os_file(encrypted_path)
         return self.decrypt_file_contents(encrypted_contents).decode('utf-8')
+
 
     def chmod(self,perms : str,path : str,session : UserSession):
 
