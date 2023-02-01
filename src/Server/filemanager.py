@@ -56,13 +56,7 @@ class FileManager():
                         "files" : {}
                     }
                 }
-            } if "a" in flags:
-
-            with open(total_path,"rb") as f:
-                content += self.file_crypto.decrypt(f.read()).decode("UTF-8")
-
-            flags = "wb"
-
+            }
         
         if not os.path.exists("./sfs"):
             os.makedirs(f"./sfs/{self.home_path}/")
