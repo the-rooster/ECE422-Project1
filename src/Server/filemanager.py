@@ -212,9 +212,18 @@ class FileManager():
         return False
 
 
-    def write_os_file(self, flags, encrypted_path, encrypted_content) -> None:
+    def write_os_file(self, flags, encrypted_path, content : str) -> None:
         encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
         total_path = os.path.normpath(self.base_path + encrypted_path_string)
+
+        if "a" in flags:
+
+            with open(total_path,"rb") as f:
+                content += self.file_crypto.decrypt(f.read()).decode("UTF-8")
+
+            flags = "wb"
+
+        encrypted_content = self.file_crypto.encrypt(content.encode("UTF-8"))
 
         with open(total_path, flags) as f:
             f.write(encrypted_content)
@@ -350,12 +359,11 @@ class FileManager():
             }
 
         flags = ("w" if overwrite_flag == "o" else "a") + "b"
-        encrypted_content = self.encrypt_file_contents(content)
         encrypted_write_path = encrypted_path + [encrypted_filename]
 
  
         self.make_os_directories(encrypted_path)
-        self.write_os_file(flags, encrypted_write_path, encrypted_content)
+        self.write_os_file(flags, encrypted_write_path, content)
         self.save()
         return True
 
