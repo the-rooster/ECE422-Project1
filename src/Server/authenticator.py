@@ -24,6 +24,19 @@ class Authenticator():
         else:
             self.groups = {"groups" : []}
 
+            """
+            TODO: change structure to this
+            {
+                "groups": {
+
+                    "group1": {
+                        "join_reqs" : ["user1","user2"]
+                    }
+                }
+            }
+            
+            """
+
 
     def user_save(self):
         with open("users.json","w") as f:
@@ -78,6 +91,9 @@ class Authenticator():
 
 
     def group_add(self,group_name,new_user,session : UserSession):
+
+        #TODO: check if username in join_reqs
+
         if not group_name in self.users[session.get_username()]["groups"]:
             return False
 
@@ -115,4 +131,12 @@ class Authenticator():
     
     def group_list(self, session : UserSession):
         return " ".join(self.users[session.get_username()]["groups"])
+
+    def group_join(self, group_name, session : UserSession):
+        #makes a group join request
+        return
+    
+    def group_list_requests(self,group_name, session : UserSession):
+        #list all join requests for a given group
+        return
     
