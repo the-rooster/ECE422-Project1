@@ -55,6 +55,7 @@ class SecureFileSystemServer():
             print('verify_integrity', self.filemanager.verify_integrity(args[1]))
             session.set_username(args[1])
             self.send(session, f"Succesfully logged in as {args[1]}\n")
+            session.set_cwd("/home/" + args[1] + "/")
         else:
             self.send(session, "Failed to login\n")
 
@@ -145,6 +146,48 @@ class SecureFileSystemServer():
             self.send(session,"chmod succesful\n")
         else:
             self.send(session,"chmod failed\n")
+
+
+    def handle_group_create(self, args, session):
+        if len(args) != 2:
+            self.send(session,"Length of group_create command must be 2\n")
+            return
+
+        if self.authenticator.group_create(args[1], session):
+            self.send(session,"group_create succesful\n")
+        else:
+            self.send(session,"group_create failed\n")
+
+
+    def handle_group_add(self, args, session):
+        if len(args) != 3:
+            self.send(session,"Length of group_add command must be 3\n")
+            return
+
+        if self.authenticator.group_add(args[1], args[2], session):
+            self.send(session,"group_add succesful\n")
+        else:
+            self.send(session,"group_add failed\n")
+            
+
+    def handle_group_remove(self, args, session : UserSession):
+        if len(args) != 3:
+            self.send(session, "Length of group_remove command must be 3\n")
+            return
+            
+        if self.authenticator.group_remove(args[1], args[2], session):
+            self.send(session,"group_remove succeeded\n")
+        else:
+            self.send(session,"group_remove failed\n")
+
+
+    def handle_group_list(self, args, session):
+
+        if len(args) != 1:
+            self.send(session,"Length of group_list command must be 1\n")
+            return
+        
+        self.send(session,self.authenticator.group_list(session))
 
 
     def send(self, session : UserSession, message: str):
