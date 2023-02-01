@@ -160,127 +160,91 @@ class FileManager():
 
         return path
 
-    
-    def dir_exists(self, dir_name, file_obj):
-        if file_obj["type"] != "directory":
-            print("dir_exists: 1")
-            return False
 
-        for dir_name_encrypted in file_obj["files"]:
-            if self.decode_filename(dir_name_encrypted) == dir_name:
-                return dir_name_encrypted
+    def find_encrypted_filename(self, filename : str, file_obj) -> str:
+        for encrypted_filename in file_obj["files"]:
+            if self.decode_filename(encrypted_filename) == filename:
+                return encrypted_filename
 
-        print("dir_exists: 2")
-        return False
-    
-
-    def cd(self,path,session : UserSession):
-        
-        path = self.fix_path(path,session)
-
-        file_obj = self.files
-
-        for dir in path:
-            next_dir = self.dir_exists(dir, file_obj)
-
-            if not next_dir:
-                return False
-            
-            file_obj = file_obj['files'][next_dir]
-
-        
-        path = "/".join(path)
-            
-        return path + "/"
+        return ""
 
 
-    def ls(self, path, session):
-
+    def get_file_list(self, file_obj, session : UserSession) -> str:
         result = ""
-
-        path = self.fix_path(path,session)
-
-        file_obj = self.files
-
-        for dir in path:
-            next_dir = self.dir_exists(dir, file_obj)
-
-            if not next_dir:
-                return "ls failed"
-            
-            file_obj = file_obj['files'][next_dir]
-
-
-        #if they requested a listing of the root directory
-        if not file_obj:
-            for (k,v) in self.files["files"].items():
-                result += self.decode_filename(k) + "\n"
-        else:
-            #listing of directory returned. only return filename if user has permission 
-            for (k,v) in file_obj["files"].items():
-                type = v["type"]
-                perms = v["permissions"]
-                owner = v["owner"]
-                if type == "directory" or (type == "file" and self.has_permission(v,session)) :
-                    result += self.decode_filename(k) + f" | {owner} | {type} | {perms}\n"
-                else:
-                    #if user lacks permissions, show encrypted name
-                    result += k + f" | {type} | {perms}\n"
-        return result        
-    
-    
-    def mkdir(self, name, session: UserSession):
-
-
-
-        path = self.fix_path(path,session)
-
-        file_obj = self.files
-
-        for dir in path:
-            next_dir = self.dir_exists(dir, file_obj)
-
-            if not next_dir:
-                return False
-            
-            file_obj = file_obj['files'][next_dir]
-
         
-        path = "/".join(path)
-            
-        return path + "/"
+        for (k,v) in file_obj["files"].items():
+            type = v["type"]
+            perms = v["permissions"]
+            owner = v["owner"]
+            if type == "directory" or (type == "file" and self.has_permission(v, session)) :
+                result += self.decode_filename(k) + f" | {owner} | {type} | {perms}\n"
+            else:
+                result += k + f" | {type} | {perms}\n"
+
+        return result
 
 
-        
-        path = self.fix_path(f"./{name}",session)
+    def make_os_directories(self, path) -> None:
         encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else ""
         total_path = os.path.normpath(self.base_path + encrypted_path + "/")
 
-        if not path or len(path) < 2 or path[0] != 'home' or path[1] != session.get_username():
-            return False
+        if not os.path.exists(total_path):
+            print("total path: ", total_path)
+            os.makedirs(total_path)
+    
 
+    def cd(self, path, session : UserSession):
+        path = self.fix_path(path,session)
         file_obj = self.files
 
-        for dir in path:
-            encrypted_dir = self.encode_filename(dir)
-            if encrypted_dir not in file_obj["files"]:
-                file_obj["files"][encrypted_dir] = {
+        for dir_name in path:
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                return False
+
+            file_obj = file_obj["files"][encrypted_filename]
+            if file_obj["type"] != "directory":
+                return False
+            
+        return "/".join(path) + "/"
+
+
+    def ls(self, path, session : UserSession):
+        path = self.fix_path(path,session)
+        file_obj = self.files
+
+        for dir_name in path:
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                return "ls failed"
+
+            file_obj = file_obj["files"][encrypted_filename]
+            if file_obj["type"] != "directory":
+                return "ls failed"
+
+        return self.get_file_list(file_obj, session)
+    
+
+    def mkdir(self, name, session: UserSession):
+        path = self.fix_path(f"./{name}", session)
+        file_obj = self.files
+
+        for dir_name in path:
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                encrypted_filename = self.encode_filename(dir_name)
+                file_obj["files"][encrypted_filename] = {
                     "permissions" : "200",
                     "owner" : session.get_username(),
                     "type" : "directory",
                     "files" : {}
                 }
 
-            file_obj = file_obj["files"][encrypted_dir]
-
+            file_obj = file_obj["files"][encrypted_filename]
             if file_obj["type"] != "directory":
-                print("found object on mkdir path that isnt a directory")
                 return False
 
-        if not os.path.exists(total_path):
-            print("total path: ", total_path)
-            os.makedirs(total_path)
-            
+        self.make_os_directories(path)
         self.save()
         return True
 
