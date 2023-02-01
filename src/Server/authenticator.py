@@ -16,7 +16,7 @@ class Authenticator():
             with open("users.json","r") as f:
                 self.users = json.loads(f.read())
         else:
-            self.users = {}
+            self.users = {"admin" : {"password":'cantgetthis',"groups" : []}}
 
         if os.path.exists("groups.json"):
             with open("groups.json","r") as f:

@@ -95,9 +95,15 @@ class FileManager():
         #return string 'read', 'write' if user has permission
         #otherwise, return None
 
+        print('testtesttesttest')
         perms = file["permissions"]
         owner = file["owner"]
-        user_groups = self.get_user_info(file["owner"])["groups"]
+
+        print("GETTING GROUPS OF USER")
+        user_groups = self.get_user_info(file["owner"])
+        print("GOT USER GROUPS")
+        user_groups = user_groups["groups"]
+        print(perms)
         
         #check owner bits if user is owner
         if session.get_username() == owner:
@@ -134,6 +140,8 @@ class FileManager():
             return 'write'
         elif perms[2] == "1":
             return 'read'
+
+ 
             
         return None
         
@@ -171,8 +179,10 @@ class FileManager():
     def find_encrypted_filename(self, filename : str, file_obj) -> str:
         for encrypted_filename in file_obj["files"]:
             if self.decode_filename(encrypted_filename) == filename:
+                print('aaaaaaaa')
                 return encrypted_filename
 
+        print("ooeoeeeeeee")
         return ""
 
 
@@ -225,18 +235,28 @@ class FileManager():
         path = self.fix_path(path,session)
         file_obj = self.files
 
+        print("oooaaaaoooaaaoaooaoaaoooaoaoa")
+        print(path)
         for dir_name in path:
             encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            print(encrypted_filename)
             if encrypted_filename == "":
+                print("test2")
                 return False
 
             file_obj = file_obj["files"][encrypted_filename]
 
+            print('test3')
+
             if not self.has_permission(file_obj,session):
+                print("perms failed")
                 return False
             
             if file_obj["type"] != "directory":
+                print("test")
                 return False
+
+        print("AASODAOSDOSADOSA")
             
         return "/".join(path) + "/"
 
@@ -307,11 +327,20 @@ class FileManager():
 
 
         #TODO: PERMISSIONS NOT BEING DONE RIGHT HERE. IF FILE ALREADY EXISTS, CHECK PERM BITS. OTHERWISE, MAKE SURE USER OWNS DIRECTORY
-        if not self.has_permission(file_obj, session) == "write":
+
+
+        encrypted_filename = self.find_encrypted_filename(path[-1], file_obj)
+
+        if not encrypted_filename:
+            encrypted_filename = self.encode_filename(path[-1])
+
+        if not self.has_permission(file_obj, session) == "write" and encrypted_filename in file_obj["files"]:
             print("USER LACKS PERMISSIONS", self.has_permission(file_obj, session))
             return False
+        elif not encrypted_filename in file_obj["files"].keys() and not session.get_username() == file_obj["owner"]:
+            print("Creating new file in directory that they do not own!")
+            return False
 
-        encrypted_filename = self.encode_filename(path[-1])
         if overwrite_flag == "o":
             file_obj["files"][encrypted_filename] = {
                 "permissions" : "200",
@@ -324,6 +353,7 @@ class FileManager():
         encrypted_content = self.encrypt_file_contents(content)
         encrypted_write_path = encrypted_path + [encrypted_filename]
 
+ 
         self.make_os_directories(encrypted_path)
         self.write_os_file(flags, encrypted_write_path, encrypted_content)
         self.save()
