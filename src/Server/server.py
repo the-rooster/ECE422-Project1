@@ -189,6 +189,26 @@ class SecureFileSystemServer():
         
         self.send(session,self.authenticator.group_list(session))
 
+    def handle_group_join(self,args,session : UserSession):
+
+        if len(args) != 2:
+            self.send(session,"Length of group_join command must be 2\n")
+            return
+        
+        if self.authenticator.group_join(args[1],session):
+            self.send(session,"join group request sent\n")
+            return
+        
+        self.send(session,"group_join failed")
+
+    def handle_group_list_requests(self,args,session : UserSession):
+
+        if len(args) != 2:
+            self.send(session,"Length of group_list_requests command must be 2\n")
+            return
+
+        self.send(session,self.authenticator.group_list_requests(args[1],session))
+
 
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)
@@ -220,6 +240,10 @@ class SecureFileSystemServer():
                 self.handle_group_remove(args, session)
             elif cmd == "group_list":
                 self.handle_group_list(args, session)
+            elif cmd == "group_join":
+                self.handle_group_join(args,session)
+            elif cmd == "group_list_requests":
+                self.handle_group_list_requests(args,session)
             elif cmd == "create":
                 self.handle_create(args, session)
             elif cmd == "delete":

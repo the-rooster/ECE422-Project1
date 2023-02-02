@@ -212,20 +212,12 @@ class FileManager():
         return False
 
 
-    def write_os_file(self, flags, encrypted_path, content : str) -> None:
+    def write_os_file(self, encrypted_path, content : str) -> None:
         encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
         total_path = os.path.normpath(self.base_path + encrypted_path_string)
-
-        if "a" in flags:
-
-            with open(total_path,"rb") as f:
-                content += self.file_crypto.decrypt(f.read()).decode("UTF-8")
-
-            flags = "wb"
-
         encrypted_content = self.file_crypto.encrypt(content.encode("UTF-8"))
 
-        with open(total_path, flags) as f:
+        with open(total_path, "wb") as f:
             f.write(encrypted_content)
 
     
@@ -334,10 +326,6 @@ class FileManager():
             if file_obj["type"] != "directory":
                 return False
 
-
-        #TODO: PERMISSIONS NOT BEING DONE RIGHT HERE. IF FILE ALREADY EXISTS, CHECK PERM BITS. OTHERWISE, MAKE SURE USER OWNS DIRECTORY
-
-
         encrypted_filename = self.find_encrypted_filename(path[-1], file_obj)
 
         if not encrypted_filename:
@@ -350,6 +338,9 @@ class FileManager():
             print("Creating new file in directory that they do not own!")
             return False
 
+        
+        encrypted_write_path = encrypted_path + [encrypted_filename]
+
         if overwrite_flag == "o":
             file_obj["files"][encrypted_filename] = {
                 "permissions" : "200",
@@ -357,13 +348,26 @@ class FileManager():
                 "type" : "file",
                 "hash" : base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8"),
             }
+        if overwrite_flag == "a":
+            
+            if encrypted_filename not in file_obj["files"].keys():
+                print("appending to a file that does not exist")
+                return False
 
-        flags = ("w" if overwrite_flag == "o" else "a") + "b"
-        encrypted_write_path = encrypted_path + [encrypted_filename]
+            #recalculate hash here:
 
- 
+            encrypted_path_string = '/'.join(encrypted_write_path) if encrypted_path else ""
+            total_path = os.path.normpath(self.base_path + encrypted_path_string)
+
+            with open(total_path,"rb") as f:
+
+                content = content + self.file_crypto.decrypt(f.read()).decode("UTF-8")
+
+            file_obj["files"][encrypted_filename]["hash"] = base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8")
+
+
         self.make_os_directories(encrypted_path)
-        self.write_os_file(flags, encrypted_write_path, content)
+        self.write_os_file(encrypted_write_path, content)
         self.save()
         return True
 
@@ -433,14 +437,19 @@ class FileManager():
 
     def verify_integrity(self, username : str):
         path = ['home', username] # the unencrypted path in an array
-        encrypted_path = '/'.join([self.encode_filename(x) for x in path]) if path else "" # the encrypted path in a string
-        total_path = os.path.normpath(self.base_path + encrypted_path + "/") # the encrypted path in a string starting with sfs/
 
         file_obj = self.files
         try:
-            file_obj = file_obj['files'][self.encode_filename(path[0])]['files'][self.encode_filename(path[1])] # file_obj at home/<username>
-        except:
+            
+            file_obj = file_obj['files'][self.home_path]
+            encrypted_user_dir = self.find_encrypted_filename(path[1],file_obj)
+            file_obj = file_obj['files'][self.find_encrypted_filename(path[1],file_obj)] # file_obj at home/<username>
+        except Exception as e:
+            print(e)
             return ["Error: user directory not found"]
+
+        encrypted_path = f'/{self.home_path}/{encrypted_user_dir}' if path else "" # the encrypted path in a string
+        total_path = os.path.normpath(self.base_path + encrypted_path + "/") # the encrypted path in a string starting with sfs/
 
         return self.verify_integrity_dfs(file_obj, total_path)
 
@@ -452,6 +461,7 @@ class FileManager():
             new_path = total_path + '/' + file
             new_file_obj = file_obj['files'][file]
 
+            print(new_file_obj)
             if new_file_obj['type'] == 'directory' and os.path.isdir(new_path):
                 messages.extend(self.verify_integrity_dfs(new_file_obj, new_path))
             elif new_file_obj['type'] == 'file' and os.path.isfile(new_path):
@@ -470,6 +480,8 @@ class FileManager():
         decrypted_contents = self.decrypt_file_contents(encrypted_contents)
         constructed_hash = base64.encodebytes(SHA256.new(decrypted_contents).digest()).decode("UTF-8")
         existing_hash = file_obj['hash']
+
+        print(constructed_hash,existing_hash)
 
         if constructed_hash != existing_hash:
             return [f"Error: hash mismatch {path}"]

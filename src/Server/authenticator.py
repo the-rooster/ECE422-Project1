@@ -22,7 +22,7 @@ class Authenticator():
             with open("groups.json","r") as f:
                 self.groups = json.loads(f.read())
         else:
-            self.groups = {"groups" : []}
+            self.groups = {}
 
             """
             TODO: change structure to this
@@ -75,13 +75,13 @@ class Authenticator():
 
 
     def group_create(self,group_name,session : UserSession):
-        if group_name in self.groups["groups"]:
+        if group_name in self.groups.keys():
             return False
 
         if not group_name:
             return False
         
-        self.groups["groups"].append(group_name)
+        self.groups[group_name] = {"join_reqs" : []}
 
         self.users[session.get_username()]["groups"].append(group_name)
 
@@ -92,8 +92,6 @@ class Authenticator():
 
     def group_add(self,group_name,new_user,session : UserSession):
 
-        #TODO: check if username in join_reqs
-
         if not group_name in self.users[session.get_username()]["groups"]:
             return False
 
@@ -103,6 +101,11 @@ class Authenticator():
         if group_name in self.users[new_user]["groups"]:
             return False
         
+        if not new_user in self.groups[group_name]["join_reqs"]:
+            return False
+
+        self.groups[group_name]["join_reqs"].remove(new_user)
+
         self.users[new_user]["groups"].append(group_name)
 
         self.user_save()
@@ -111,7 +114,7 @@ class Authenticator():
 
 
     def group_remove(self,group_name,user,session : UserSession):
-        if not group_name in self.users[session.get_username()]["groups"]:
+        if not group_name in self.users[session.get_username()]["groups"].keys():
             return False
 
         if not user in self.users.keys():
@@ -133,10 +136,21 @@ class Authenticator():
         return " ".join(self.users[session.get_username()]["groups"])
 
     def group_join(self, group_name, session : UserSession):
-        #makes a group join request
-        return
+        
+        if not group_name in self.groups.keys():
+            return False
+
+        self.groups[group_name]["join_reqs"].append(session.get_username())
+
+        self.group_save()
+        return True
     
     def group_list_requests(self,group_name, session : UserSession):
         #list all join requests for a given group
-        return
+
+        if (not group_name in self.users[session.get_username()]["groups"]) or (group_name not in self.groups.keys()):
+            return ""
+        
+
+        return " ".join(self.groups[group_name]["join_reqs"])
     
