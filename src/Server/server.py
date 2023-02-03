@@ -52,9 +52,13 @@ class SecureFileSystemServer():
             return
 
         if self.authenticator.authenticate_user(args[1],args[2]):
-            print('verify_integrity', self.filemanager.verify_integrity(args[1]))
+            errors = self.filemanager.verify_integrity(args[1])
+
+            if not len(errors):
+                errors = ["Integrity Check Succesful!"]
+            errors = "\n".join(errors)
             session.set_username(args[1])
-            self.send(session, f"Succesfully logged in as {args[1]}\n")
+            self.send(session, f"Succesfully logged in as {args[1]}\nIntegrity Check:\n{errors}")
             session.set_cwd("/home/" + args[1] + "/")
         else:
             self.send(session, "Failed to login\n")

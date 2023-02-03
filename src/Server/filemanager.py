@@ -275,6 +275,9 @@ class FileManager():
             if file_obj["type"] != "directory":
                 return "ls failed"
 
+            if not self.has_permission(file_obj,session):
+                return "ls failed"
+
         return self.get_file_list(file_obj, session)
     
 
@@ -359,9 +362,13 @@ class FileManager():
             encrypted_path_string = '/'.join(encrypted_write_path) if encrypted_path else ""
             total_path = os.path.normpath(self.base_path + encrypted_path_string)
 
-            with open(total_path,"rb") as f:
+            try:
+                with open(total_path,"rb") as f:
 
-                content = content + self.file_crypto.decrypt(f.read()).decode("UTF-8")
+                    content = content + self.file_crypto.decrypt(f.read()).decode("UTF-8")
+
+            except Exception as e:
+                return False
 
             file_obj["files"][encrypted_filename]["hash"] = base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8")
 
@@ -396,7 +403,14 @@ class FileManager():
             return "read failed"
             
         encrypted_contents = self.read_os_file(encrypted_path)
-        return self.decrypt_file_contents(encrypted_contents).decode('utf-8')
+
+        
+        try:
+            decrypted = self.decrypt_file_contents(encrypted_contents).decode('utf-8')
+        except Exception as e:
+            return "Failed to decrypt! File likely tampered with"
+            
+        return decrypted
 
 
     def chmod(self,perms : str,path : str,session : UserSession):
@@ -433,6 +447,14 @@ class FileManager():
 
         self.save()
         return True
+
+    def delete(self,path,session : UserSession):
+        #TODO:
+        return
+
+    def create(self,path,session : UserSession):
+        #TODO:
+        return
 
 
     def verify_integrity(self, username : str):
@@ -477,9 +499,13 @@ class FileManager():
         with open(path, "rb") as f:
             encrypted_contents = f.read()
 
-        decrypted_contents = self.decrypt_file_contents(encrypted_contents)
-        constructed_hash = base64.encodebytes(SHA256.new(decrypted_contents).digest()).decode("UTF-8")
-        existing_hash = file_obj['hash']
+        try:
+            decrypted_contents = self.decrypt_file_contents(encrypted_contents)
+            constructed_hash = base64.encodebytes(SHA256.new(decrypted_contents).digest()).decode("UTF-8")
+            existing_hash = file_obj['hash']
+        except Exception as e:
+            
+            return [f"Error: File tampered with {path}"]
 
         print(constructed_hash,existing_hash)
 
