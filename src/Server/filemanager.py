@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import copy
 from threading import Lock
 from Crypto.Hash import SHA256
 
@@ -232,6 +233,28 @@ class FileManager():
         return encrypted_contents
 
 
+    def delete_os_file(self, encrypted_path) -> bool:
+        encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
+        total_path = os.path.normpath(self.base_path + encrypted_path_string)
+
+        if os.path.isfile(total_path):
+            os.remove(total_path)
+            return not os.path.exists(total_path)
+
+        print('here124124')
+        return False
+
+
+    def rename_os_file(self,encrypted_path,new_name) -> bool:
+        encrypted_path_string = '/'.join(encrypted_path) if encrypted_path else ""
+        dest_path_string = '/'.join(encrypted_path[:-1]) + "/" + new_name
+        total_path = os.path.normpath(self.base_path + encrypted_path_string)
+        total_dest_path = os.path.normpath(self.base_path + dest_path_string)
+
+        os.rename(total_path,total_dest_path)
+        return os.path.exists(total_dest_path) and not os.path.exists(total_path)
+ 
+
     def cd(self, path, session : UserSession):
         path = self.fix_path(path,session)
         file_obj = self.files
@@ -448,13 +471,77 @@ class FileManager():
         self.save()
         return True
 
-    def delete(self,path,session : UserSession):
-        #TODO:
-        return
+
+    def delete(self,path,session : UserSession) -> bool:
+        path = self.fix_path(path,session)
+        encrypted_path = []
+        file_obj = self.files
+
+        for dir_name in path[:-1]:
+            if file_obj["type"] != "directory":
+                return False
+                
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                print('delete1')
+                return False
+
+            encrypted_path.append(encrypted_filename)
+            file_obj = file_obj["files"][encrypted_filename]
+
+        if not self.has_permission(file_obj, session) == "write":
+            print("USER LACKS PERMISSIONS")
+            return False
+
+        old_name = self.find_encrypted_filename(path[-1],file_obj)
+        del file_obj["files"][old_name]
+
+        encrypted_path.append(old_name)
+        
+        return self.delete_os_file(encrypted_path)
+        
+
+    def rename(self,path,new_name,session : UserSession):
+        path = self.fix_path(path,session)
+        encrypted_path = []
+        file_obj = self.files
+
+        if "/" in new_name:
+            print("tried to move file in rename")
+            return False
+
+        for dir_name in path[:-1]:
+            if file_obj["type"] != "directory":
+                return False
+                
+            encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
+            if encrypted_filename == "":
+                return False
+
+            encrypted_path.append(encrypted_filename)
+            file_obj = file_obj["files"][encrypted_filename]
+
+        if not self.has_permission(file_obj, session) == "write":
+            print("USER LACKS PERMISSIONS")
+            return False
+
+        enc_new_name = self.encode_filename(new_name)
+        old_name = self.find_encrypted_filename(path[-1],file_obj)
+        encrypted_path.append(old_name)
+
+        if file_obj["files"][old_name]["type"] == "file" and not new_name.endswith(".txt"):
+            print("tried to rename file to not txt")
+            return False
+
+        temp = copy.deepcopy(file_obj["files"][old_name])
+        del file_obj["files"][old_name]
+        file_obj["files"][enc_new_name] = temp
+
+        return self.rename_os_file(encrypted_path, enc_new_name)
+
 
     def create(self,path,session : UserSession):
-        #TODO:
-        return
+        return self.write(path,"o","",session)
 
 
     def verify_integrity(self, username : str):
@@ -473,30 +560,36 @@ class FileManager():
         encrypted_path = f'/{self.home_path}/{encrypted_user_dir}' if path else "" # the encrypted path in a string
         total_path = os.path.normpath(self.base_path + encrypted_path + "/") # the encrypted path in a string starting with sfs/
 
-        return self.verify_integrity_dfs(file_obj, total_path)
+        return self.verify_integrity_dfs(file_obj, total_path, path)
 
 
-    def verify_integrity_dfs(self, file_obj, total_path):
+    def verify_integrity_dfs(self, file_obj, total_path, path):
         messages = []
 
         for file in file_obj['files']:
             new_path = total_path + '/' + file
             new_file_obj = file_obj['files'][file]
 
-            print(new_file_obj)
+            new_piece = self.filename_crypto.decrypt(file.encode("UTF-8")).decode("UTF-8")
+
+            temp = path + [new_piece]
             if new_file_obj['type'] == 'directory' and os.path.isdir(new_path):
-                messages.extend(self.verify_integrity_dfs(new_file_obj, new_path))
+                messages.extend(self.verify_integrity_dfs(new_file_obj, new_path, temp))
             elif new_file_obj['type'] == 'file' and os.path.isfile(new_path):
-                messages.extend(self.verify_integrity_hash(new_file_obj, new_path))
+                messages.extend(self.verify_integrity_hash(new_file_obj, new_path, temp))
             else:
-                messages.append(f"Error: path not found {new_path}")
+                disp_path = "/".join(path)
+                messages.append(f"Error: path not found {disp_path}")
         
         return messages
 
 
-    def verify_integrity_hash(self, file_obj, path):
+    def verify_integrity_hash(self, file_obj, total_path, path):
         encrypted_contents = bytearray()
-        with open(path, "rb") as f:
+
+        path = "/".join(path)
+        
+        with open(total_path, "rb") as f:
             encrypted_contents = f.read()
 
         try:

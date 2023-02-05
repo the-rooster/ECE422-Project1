@@ -213,6 +213,42 @@ class SecureFileSystemServer():
 
         self.send(session,self.authenticator.group_list_requests(args[1],session))
 
+    
+    def handle_create(self, args, session: UserSession):
+        
+        if len(args) != 2:
+            self.send(session,"Length of create command must be 2\n")
+            return
+
+        if self.filemanager.create(args[1], session):
+            self.send(session,"create succeeded\n")
+        else:
+            self.send(session,"create failed\n")
+
+
+    def handle_delete(self, args, session: UserSession):
+
+        if len(args) != 2:
+            self.send(session,"Length of delete command must be 2\n")
+            return
+
+        if self.filemanager.delete(args[1], session):
+            self.send(session,"delete succeeded\n")
+        else:
+            self.send(session,"delete failed\n")
+
+
+    def handle_rename(self, args, session: UserSession):
+
+        if len(args) != 3:
+            self.send(session,"Length of rename command must be 3\n")
+            return
+
+        if self.filemanager.rename(args[1], args[2], session):
+            self.send(session,"rename succeeded\n")
+        else:
+            self.send(session,"rename failed\n")
+
 
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)
