@@ -14,7 +14,12 @@ def main():
     server.bind(("0.0.0.0",8080))
     server.listen()
 
-    print("LISTENING ON PORT 8080")
+    if "admin" not in sfs.authenticator.users.keys():
+        print("MUST REGISTER SYS ADMIN. Username is admin, choose password:\n")
+        password = input("Admin Password: ")
+
+        sfs.authenticator.new_user("admin",password)
+        sfs.filemanager.new_user_dir("admin")
     
     while True:
         
