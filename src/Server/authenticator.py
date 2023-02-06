@@ -5,6 +5,28 @@ from threading import Lock
 import copy
 from session import UserSession
 
+
+
+"""
+groups.json structure
+{
+    "groups": {
+
+        "group1": {
+            "join_reqs" : ["user1","user2"]
+        }
+    }
+}
+
+users.json structure
+{
+    "name" : {
+        "password" : SHA256HASH,
+        "groups": [],
+        "active": boolean
+    }
+}
+"""
 """
 This class manages all user authentication. holds usernames and hashed passwords.
 Saves all data to users.json.
@@ -16,7 +38,7 @@ class Authenticator():
             with open("users.json","r") as f:
                 self.users = json.loads(f.read())
         else:
-            self.users = {"admin" : {"password":'cantgetthis',"groups" : []}}
+            self.users = {}
 
         if os.path.exists("groups.json"):
             with open("groups.json","r") as f:
@@ -24,18 +46,8 @@ class Authenticator():
         else:
             self.groups = {}
 
-            """
-            TODO: change structure to this
-            {
-                "groups": {
+        self.admin_name = "admin"
 
-                    "group1": {
-                        "join_reqs" : ["user1","user2"]
-                    }
-                }
-            }
-            
-            """
 
 
     def user_save(self):
@@ -55,17 +67,46 @@ class Authenticator():
         self.users[username] = {
             "password": SHA256.new(password.encode("UTF-8")).hexdigest(),
             "groups": [],
+            "active" : False
         }
+
+        if username == self.admin_name:
+
+            self.users[username]["active"] = True
 
         self.user_save()
         return True
 
 
+    def activate_user(self,username : str, session : UserSession):
+
+        if not session.get_username() == self.admin_name:
+            return False
+
+        if username not in self.users.keys():
+            return False
+
+        if self.users[username]["active"]:
+            return False
+        
+        self.users[username]["active"] = True
+
+        print('asdiasida')
+        self.user_save()
+
+        return True
+
     def authenticate_user(self,username : str,password : str):
+
+        
         if username in self.users:
             valid = self.users[username]["password"] == SHA256.new(password.encode("UTF-8")).hexdigest()
+
+            if not self.users[username]["active"]:
+                return False
         else:
             valid = False
+
         return valid
 
 
@@ -75,6 +116,11 @@ class Authenticator():
 
 
     def group_create(self,group_name,session : UserSession):
+        
+        #only the server admin can create groups
+        if not session.get_username() == self.admin_name:
+            return False
+
         if group_name in self.groups.keys():
             return False
 
@@ -91,6 +137,7 @@ class Authenticator():
 
 
     def group_add(self,group_name,new_user,session : UserSession):
+
 
         if not group_name in self.users[session.get_username()]["groups"]:
             return False

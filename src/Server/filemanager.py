@@ -194,7 +194,7 @@ class FileManager():
             type = v["type"]
             perms = v["permissions"]
             owner = v["owner"]
-            if type == "directory" or (type == "file" and self.has_permission(v, session)) :
+            if self.has_permission(v, session):
                 result += self.decode_filename(k) + f" | {owner} | {type} | {perms}\n"
             else:
                 result += k + f" | {type} | {perms}\n"

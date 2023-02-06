@@ -32,12 +32,16 @@ class SecureFileSystemServer():
             return
 
         if self.authenticator.new_user(args[1],args[2]):
-            session.set_username(args[1])
+            #session.set_username(args[1])
             #create new user directory in file system
-            self.filemanager.new_user_dir(args[1])
+            #
             #set working directory to new home
-            session.set_cwd("/home/" + args[1] + "/")
-            self.send(session, f"Successfully created user: {args[1]}\n")
+            #session.set_cwd("/home/" + args[1] + "/")
+            self.send(session, f"Successfully requested new user: {args[1]}\n")
+
+            if args[1] == self.authenticator.admin_name:
+                self.filemanager.new_user_dir(args[1])
+
         else:
             self.send(session, "Failed to create user\n")
 
@@ -249,6 +253,18 @@ class SecureFileSystemServer():
         else:
             self.send(session,"rename failed\n")
 
+    def handle_activate_user(self,args,session: UserSession):
+
+        if len(args) != 2:
+            self.send(session,"Length of activate_user command must be 2\n")
+            return
+        
+        if self.authenticator.activate_user(args[1],session):
+            self.filemanager.new_user_dir(args[1])
+            self.send(session,"user activated\n")
+        else:
+            self.send(session,"user_activate failed\n")
+
 
     def send(self, session : UserSession, message: str):
         send_all_encrypted(session.get_conn(), session.get_keys(), message)
@@ -284,6 +300,8 @@ class SecureFileSystemServer():
                 self.handle_group_join(args,session)
             elif cmd == "group_list_requests":
                 self.handle_group_list_requests(args,session)
+            elif cmd == "activate_user":
+                self.handle_activate_user(args,session)
             elif cmd == "create":
                 self.handle_create(args, session)
             elif cmd == "delete":
