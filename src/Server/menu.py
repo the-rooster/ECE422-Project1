@@ -1,8 +1,9 @@
 menu = """Commands:
 user_create <username> <password>
+activate_user <username> |ADMIN ONLY|
 whoami
 login <username> <password>
-logout
+logout delete a user (
 menu
 group_create <groupname>
 group_add <username> <groupname>
