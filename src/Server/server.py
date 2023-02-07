@@ -217,6 +217,15 @@ class SecureFileSystemServer():
 
         self.send(session,self.authenticator.group_list_requests(args[1],session))
 
+
+    def handle_user_list_requests(self,args,session : UserSession):
+
+        if len(args) != 1:
+            self.send(session,"Length of user_list_requests command must be 1\n")
+            return
+
+        self.send(session,self.authenticator.user_list_requests(session))
+
     
     def handle_create(self, args, session: UserSession):
         
@@ -263,7 +272,19 @@ class SecureFileSystemServer():
             self.filemanager.new_user_dir(args[1])
             self.send(session,"user activated\n")
         else:
-            self.send(session,"user_activate failed\n")
+            self.send(session,"activate_user failed\n")
+
+    def handle_delete_user(self,args,session: UserSession):
+        
+        if len(args) != 2:
+            self.send(session,"Length of delete_user command must be 2\n")
+            return
+        
+        if self.authenticator.delete_user(args[1],session):
+            self.filemanager.remove_user_dir(args[1])
+            self.send(session,"user deleted\n")
+        else:
+            self.send(session,"delete_user failed\n")
 
 
     def send(self, session : UserSession, message: str):
@@ -300,6 +321,10 @@ class SecureFileSystemServer():
                 self.handle_group_join(args,session)
             elif cmd == "group_list_requests":
                 self.handle_group_list_requests(args,session)
+            elif cmd == "user_list_requests":
+                self.handle_user_list_requests(args,session)
+            elif cmd == "delete_user":
+                self.handle_delete_user(args,session)
             elif cmd == "activate_user":
                 self.handle_activate_user(args,session)
             elif cmd == "create":

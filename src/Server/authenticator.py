@@ -77,6 +77,33 @@ class Authenticator():
         self.user_save()
         return True
 
+    def delete_user(self,username : str, session : UserSession):
+
+        if not username in self.users.keys() or username == self.admin_name:
+            return False
+
+        if not session.get_username() == self.admin_name:
+            return False
+
+        del self.users[username]
+
+        self.user_save()
+
+        return True
+
+
+    def user_list_requests(self, session : UserSession):
+
+        if not session.get_username() == self.admin_name:
+            return False
+
+        res = []
+        for i in self.users:
+            if not self.users[i]["active"]:
+                res.append(i)
+
+        return " ".join(res)
+
 
     def activate_user(self,username : str, session : UserSession):
 

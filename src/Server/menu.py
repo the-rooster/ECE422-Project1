@@ -1,6 +1,8 @@
 menu = """Commands:
 user_create <username> <password>
 activate_user <username> |ADMIN ONLY|
+delete_user <username> |ADMIN ONLY|
+user_list_requests |ADMIN ONLY|
 whoami
 login <username> <password>
 logout delete a user (

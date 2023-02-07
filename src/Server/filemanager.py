@@ -49,6 +49,8 @@ class FileManager():
 
             self.files = { 
                 "type" : "directory",
+                "permissions" : "211",
+                "owner" : "admin",
                 "files": {
                     self.home_path: {
                         "permissions" : "211",
@@ -81,6 +83,12 @@ class FileManager():
             "type" : "directory",
             "files" : {}
         }
+        self.save()
+
+    
+    def remove_user_dir(self, username : str):
+        file_obj = self.files["files"][self.home_path]
+        del file_obj["files"][self.find_encrypted_filename(username,file_obj)]
         self.save()
 
 
@@ -312,6 +320,8 @@ class FileManager():
         for dir_name in path:
             encrypted_filename = self.find_encrypted_filename(dir_name, file_obj)
             if encrypted_filename == "":
+                if not self.has_permission(file_obj,session) == "write":
+                    return False
                 encrypted_filename = self.encode_filename(dir_name)
                 file_obj["files"][encrypted_filename] = {
                     "permissions" : "220",
@@ -374,7 +384,7 @@ class FileManager():
                 "type" : "file",
                 "hash" : base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8"),
             }
-        if overwrite_flag == "a":
+        elif overwrite_flag == "a":
             
             if encrypted_filename not in file_obj["files"].keys():
                 print("appending to a file that does not exist")
@@ -388,12 +398,14 @@ class FileManager():
             try:
                 with open(total_path,"rb") as f:
 
-                    content = content + self.file_crypto.decrypt(f.read()).decode("UTF-8")
+                    content = self.file_crypto.decrypt(f.read()).decode("UTF-8") + content
 
             except Exception as e:
                 return False
 
             file_obj["files"][encrypted_filename]["hash"] = base64.encodebytes(SHA256.new(content.encode("UTF-8")).digest()).decode("UTF-8")
+        else:
+            return False
 
 
         self.make_os_directories(encrypted_path)
@@ -521,12 +533,14 @@ class FileManager():
             encrypted_path.append(encrypted_filename)
             file_obj = file_obj["files"][encrypted_filename]
 
-        if not self.has_permission(file_obj, session) == "write":
-            print("USER LACKS PERMISSIONS")
-            return False
+
 
         enc_new_name = self.encode_filename(new_name)
         old_name = self.find_encrypted_filename(path[-1],file_obj)
+
+        if not self.has_permission(file_obj["files"][old_name], session) == "write":
+            print("USER LACKS PERMISSIONS")
+            return False
         encrypted_path.append(old_name)
 
         if file_obj["files"][old_name]["type"] == "file" and not new_name.endswith(".txt"):
