@@ -16,15 +16,17 @@ def main():
     port = int(sys.argv[1])
 
     ip_family = socket.AF_INET6
+    interfaces = "::"
 
     if sys.argv[2] == "4":
         ip_family = socket.AF_INET
+        interfaces = "0.0.0.0"
 
     #start tcp server. bind to all network interfaces
     server = socket.socket(ip_family,socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
-    server.bind(("0.0.0.0",port))
+    server.bind((interfaces,port))
     server.listen()
 
     if "admin" not in sfs.authenticator.users.keys():
