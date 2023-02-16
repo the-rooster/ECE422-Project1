@@ -56,6 +56,10 @@ class SecureFileSystemServer():
             self.send(session, "Length of login command must be 3\n")
             return
 
+        if session.get_username():
+            self.send(session, "Please logout first!\n")
+            return
+
         if self.authenticator.authenticate_user(args[1],args[2]):
             errors = self.filemanager.verify_integrity(args[1])
 
@@ -305,11 +309,11 @@ class SecureFileSystemServer():
             self.handle_whoami(session)
         elif cmd == "login":
             self.handle_login(args, session)
+        elif cmd == "menu":
+            self.handle_menu(session)
         elif session.get_username():
             if cmd == "logout":
                 self.handle_logout(session)
-            elif cmd == "menu":
-                self.handle_menu(session)
             elif cmd == "group_create":
                 self.handle_group_create(args, session)
             elif cmd == "group_add":
