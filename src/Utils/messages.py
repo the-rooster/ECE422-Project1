@@ -20,6 +20,10 @@ def recv_all_unencrypted(conn : socket.socket):
 
     part = conn.recv(4096)
 
+
+    if not b'|' in part:
+        return b'{}'
+
     split_at = part.index(b'|')
     msg_length = int(part[:split_at].decode("UTF-8"))
     part = part[split_at + 1:]

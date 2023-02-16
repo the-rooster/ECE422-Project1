@@ -376,7 +376,12 @@ class SecureFileSystemServer():
         while conn:
 
             #poc to check key exchange is working
-            data = recv_all_encrypted(conn,conn_cipher).decode("UTF-8")
+            try:
+                data = recv_all_encrypted(conn,conn_cipher).decode("UTF-8")
+            except Exception as e:
+                print("Failed to decrypt client request. Disconnecting!")
+                conn.close()
+                return
             print("CLIENT SENT:\n")
             print(data)
             print()

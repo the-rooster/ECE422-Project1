@@ -1,7 +1,7 @@
 import socket
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
-
+import sys
 
 from session import Session
 
@@ -11,10 +11,25 @@ from session import Session
 
 def main():
 
-    conn = socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
+
+    if len(sys.argv) != 4:
+        print("Syntax is: python main.py <ipv6> <port> <4 or 6>")
+        return
+
+
+    ip = sys.argv[1]
+    port = sys.argv[2]
+
+    ip_family = socket.AF_INET6
+
+    if sys.argv[3] == "4":
+        ip_family = socket.AF_INET
+
+
+    conn = socket.socket(ip_family,socket.SOCK_STREAM)
     conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-    conn.connect(("2605:fd00:4:1001:f816:3eff:fe61:7eb6",8080))
+    conn.connect((ip,int(port)))
 
     print("Connected")
 
